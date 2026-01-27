@@ -61,3 +61,12 @@
 - [x] Modern landing page
 - [x] Dashboard layout
 - [x] Loading states and error handling
+
+
+## Swarm Rebranding
+- [x] Rebrand from BotMarket to Swarm
+- [x] Update logo and branding colors
+- [x] Update navigation structure
+- [x] Create workable marketplace examples
+- [x] Add seed data for listings
+- [x] Update all page titles and headers

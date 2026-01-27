@@ -21,15 +21,19 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Sparkles, ShoppingCart, Brain, Package, CreditCard, Settings, Shield } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: ShoppingCart, label: "Marketplace", path: "/marketplace" },
+  { icon: Brain, label: "AI Builder", path: "/ai-builder" },
+  { icon: Package, label: "My Listings", path: "/my-listings" },
+  { icon: CreditCard, label: "Purchases", path: "/my-purchases" },
+  { icon: Settings, label: "Profile", path: "/profile" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -170,9 +174,12 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    Navigation
-                  </span>
+                  <div className="w-6 h-6 rounded bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mr-1">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="font-semibold tracking-tight truncate">
+                      Swarm
+                    </span>
                 </div>
               ) : null}
             </div>

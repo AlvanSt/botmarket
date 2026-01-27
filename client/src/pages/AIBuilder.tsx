@@ -88,7 +88,7 @@ export default function AIBuilder() {
           </CardHeader>
           <CardContent>
             <Link href="/">
-              <Button className="w-full">Sign In to Get Started</Button>
+              <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">Sign In to Get Started</Button>
             </Link>
           </CardContent>
         </Card>
@@ -109,7 +109,7 @@ export default function AIBuilder() {
           </div>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
                 <Plus className="w-4 h-4 mr-2" />
                 New Project
               </Button>
@@ -155,7 +155,7 @@ export default function AIBuilder() {
         </div>
 
         {/* Info Card */}
-        <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
           <CardContent className="p-6">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">

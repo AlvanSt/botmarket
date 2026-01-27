@@ -14,9 +14,12 @@ import {
   Star, 
   Download, 
   Eye,
-  Brain,
   Code2,
-  ArrowLeft
+  ArrowLeft,
+  Sparkles,
+  Layers,
+  AppWindow,
+  Database
 } from "lucide-react";
 
 const categories = [
@@ -67,10 +70,10 @@ export default function Marketplace() {
               </Button>
             </Link>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-                <Brain className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl">Marketplace</span>
+              <span className="font-bold text-xl">Swarm Marketplace</span>
             </div>
           </div>
           
@@ -78,7 +81,7 @@ export default function Marketplace() {
             {isAuthenticated ? (
               <>
                 <Link href="/my-listings/new">
-                  <Button size="sm">Sell Your Code</Button>
+                  <Button size="sm" className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">Sell Your Code</Button>
                 </Link>
                 <Link href="/dashboard">
                   <Button variant="outline" size="sm">Dashboard</Button>
