@@ -41,20 +41,17 @@ export default function Home() {
             <Link href="/marketplace" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Marketplace
             </Link>
-            <Link href="/marketplace?category=function" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Functions
-            </Link>
-            <Link href="/marketplace?category=template" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Templates
-            </Link>
-            <Link href="/marketplace?category=application" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Apps
-            </Link>
-            <Link href="/marketplace?category=dataset" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Data
-            </Link>
             <Link href="/ai-builder" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               AI Builder
+            </Link>
+            <Link href="/pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Pricing
+            </Link>
+            <Link href="/community" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Community
+            </Link>
+            <Link href="/affiliate" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Affiliate
             </Link>
           </nav>
 
@@ -393,7 +390,9 @@ export default function Home() {
             <div className="flex gap-6 text-sm text-muted-foreground">
               <Link href="/marketplace" className="hover:text-foreground transition-colors">Marketplace</Link>
               <Link href="/ai-builder" className="hover:text-foreground transition-colors">AI Builder</Link>
-              <Link href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+              <Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
+              <Link href="/community" className="hover:text-foreground transition-colors">Community</Link>
+              <Link href="/affiliate" className="hover:text-foreground transition-colors">Affiliate</Link>
             </div>
             <p className="text-sm text-muted-foreground">
               © 2026 Swarm. All rights reserved.

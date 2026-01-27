@@ -17,6 +17,11 @@ import AIProjectDetail from "./pages/AIProjectDetail";
 import AdminPanel from "./pages/AdminPanel";
 import Profile from "./pages/Profile";
 import PurchaseSuccess from "./pages/PurchaseSuccess";
+import Pricing from "./pages/Pricing";
+import Affiliate from "./pages/Affiliate";
+import CustomProject from "./pages/CustomProject";
+import Community from "./pages/Community";
+import Analytics from "./pages/Analytics";
 
 function Router() {
   return (
@@ -25,6 +30,9 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/listing/:slug" component={ListingDetail} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/affiliate" component={Affiliate} />
+      <Route path="/community" component={Community} />
       
       {/* Protected Routes - User Dashboard */}
       <Route path="/dashboard" component={Dashboard} />
@@ -34,6 +42,8 @@ function Router() {
       <Route path="/my-purchases" component={MyPurchases} />
       <Route path="/profile" component={Profile} />
       <Route path="/purchase-success" component={PurchaseSuccess} />
+      <Route path="/custom-project" component={CustomProject} />
+      <Route path="/analytics" component={Analytics} />
       
       {/* AI Builder Routes */}
       <Route path="/ai-builder" component={AIBuilder} />
