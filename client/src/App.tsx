@@ -25,6 +25,7 @@ import Analytics from "./pages/Analytics";
 import Teams from "./pages/Teams";
 import DataMarketplace from "./pages/DataMarketplace";
 import ProjectDashboard from "./pages/ProjectDashboard";
+import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 
 function Router() {
   return (
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/my-purchases" component={MyPurchases} />
       <Route path="/profile" component={Profile} />
       <Route path="/purchase-success" component={PurchaseSuccess} />
+      <Route path="/subscription-success" component={SubscriptionSuccess} />
       <Route path="/custom-project" component={CustomProject} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/teams" component={Teams} />

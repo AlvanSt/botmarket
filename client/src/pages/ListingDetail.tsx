@@ -162,12 +162,10 @@ export default function ListingDetail() {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-16 items-center">
-          <Link href="/marketplace">
-            <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Marketplace
+              Back
             </Button>
-          </Link>
         </div>
       </header>
 

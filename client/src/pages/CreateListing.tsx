@@ -122,11 +122,9 @@ export default function CreateListing() {
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Link href="/my-listings">
-            <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
-          </Link>
           <div>
             <h1 className="text-3xl font-bold">Create Listing</h1>
             <p className="text-muted-foreground">

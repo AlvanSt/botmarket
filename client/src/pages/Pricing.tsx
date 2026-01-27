@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { 
@@ -19,9 +20,11 @@ import {
   Users,
   BarChart3,
   Gift,
-  Lock,
-  Loader2
+  Loader2,
+  AlertCircle,
+  CreditCard
 } from "lucide-react";
+import { getLoginUrl } from "@/const";
 
 const plans = [
   {
@@ -30,8 +33,6 @@ const plans = [
     description: "Perfect for getting started",
     monthlyPrice: 0,
     yearlyPrice: 0,
-    stripePriceIdMonthly: null,
-    stripePriceIdYearly: null,
     icon: Zap,
     color: "from-gray-500 to-gray-600",
     popular: false,
@@ -69,8 +70,6 @@ const plans = [
     description: "For serious creators and small teams",
     monthlyPrice: 14.99,
     yearlyPrice: 143.90,
-    stripePriceIdMonthly: "price_pro_monthly",
-    stripePriceIdYearly: "price_pro_yearly",
     icon: Star,
     color: "from-amber-500 to-orange-600",
     popular: true,
@@ -108,8 +107,6 @@ const plans = [
     description: "For power users and enterprises",
     monthlyPrice: 49.99,
     yearlyPrice: 479.90,
-    stripePriceIdMonthly: "price_master_monthly",
-    stripePriceIdYearly: "price_master_yearly",
     icon: Crown,
     color: "from-purple-500 to-indigo-600",
     popular: false,
@@ -119,7 +116,7 @@ const plans = [
       aiTrainingSessions: 40,
       dataCredits: 50,
       templateDownloads: 40,
-      appTrials: -1, // unlimited
+      appTrials: -1,
       teamMembers: 10,
       storage: "100GB",
     },
@@ -150,34 +147,70 @@ const additionalBenefits = [
   { icon: Star, title: "Education Discount", description: "40% off for students/teachers" },
 ];
 
-// Feature comparison for upgrade prompts
-const featureRequirements: Record<string, string> = {
-  "team_collaboration": "pro",
-  "revenue_splitting": "pro",
-  "custom_project": "pro",
-  "custom_branding": "master",
-  "advanced_analytics": "master",
-  "priority_support": "master",
-};
-
 export default function Pricing() {
   const { isAuthenticated, user } = useAuth();
   const [isYearly, setIsYearly] = useState(false);
   const [isLoading, setIsLoading] = useState<string | null>(null);
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-  const [requiredPlan, setRequiredPlan] = useState<string | null>(null);
+  const [showDowngradeDialog, setShowDowngradeDialog] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Get current user's plan
   const currentPlan = user?.subscriptionTier || "free";
+  const planOrder = ["free", "pro", "master"];
+  const currentPlanIndex = planOrder.indexOf(currentPlan);
+
+  // Subscription mutations
+  const createCheckoutMutation = trpc.subscription.createCheckout.useMutation({
+    onSuccess: (data) => {
+      if (data.checkoutUrl) {
+        toast.success("Redirecting to checkout...", {
+          description: "Use test card: 4242 4242 4242 4242"
+        });
+        window.open(data.checkoutUrl, '_blank');
+      }
+      setIsLoading(null);
+    },
+    onError: (error) => {
+      toast.error("Failed to create checkout", { description: error.message });
+      setIsLoading(null);
+    },
+  });
+
+  const cancelMutation = trpc.subscription.cancel.useMutation({
+    onSuccess: () => {
+      toast.success("Subscription will be canceled at end of billing period");
+      setShowCancelDialog(false);
+    },
+    onError: (error) => {
+      toast.error("Failed to cancel subscription", { description: error.message });
+    },
+  });
+
+  const billingPortalMutation = trpc.subscription.getBillingPortal.useMutation({
+    onSuccess: (data) => {
+      if (data.url) {
+        window.open(data.url, '_blank');
+      }
+    },
+    onError: (error) => {
+      toast.error("Failed to open billing portal", { description: error.message });
+    },
+  });
 
   const handleSubscribe = async (planId: string) => {
     if (!isAuthenticated) {
-      toast.error("Please sign in to subscribe");
+      window.location.href = getLoginUrl();
       return;
     }
     
     if (planId === "free") {
-      toast.success("You're already on the Free plan!");
+      if (currentPlan !== "free") {
+        setSelectedPlan(planId);
+        setShowDowngradeDialog(true);
+      } else {
+        toast.info("You're already on the Free plan!");
+      }
       return;
     }
 
@@ -186,46 +219,40 @@ export default function Pricing() {
       return;
     }
 
+    const targetPlanIndex = planOrder.indexOf(planId);
+    const isDowngrade = targetPlanIndex < currentPlanIndex;
+
+    if (isDowngrade) {
+      setSelectedPlan(planId);
+      setShowDowngradeDialog(true);
+      return;
+    }
+
+    // Upgrade flow
     setIsLoading(planId);
-
-    try {
-      // In production, this would call the Stripe checkout API
-      // For now, show a toast with test card info
-      toast.success(
-        `Redirecting to checkout for ${planId.charAt(0).toUpperCase() + planId.slice(1)} plan...`,
-        {
-          description: "Use test card: 4242 4242 4242 4242"
-        }
-      );
-      
-      // Simulate redirect delay
-      setTimeout(() => {
-        setIsLoading(null);
-        // In production: window.open(checkoutUrl, '_blank');
-      }, 1500);
-    } catch (error) {
-      toast.error("Failed to start checkout. Please try again.");
-      setIsLoading(null);
-    }
+    createCheckoutMutation.mutate({
+      planId: planId as "pro" | "master",
+      isYearly,
+    });
   };
 
-  const checkFeatureAccess = (feature: string): boolean => {
-    const requiredPlanForFeature = featureRequirements[feature];
-    if (!requiredPlanForFeature) return true;
-    
-    const planOrder = ["free", "pro", "master"];
-    const currentPlanIndex = planOrder.indexOf(currentPlan);
-    const requiredPlanIndex = planOrder.indexOf(requiredPlanForFeature);
-    
-    return currentPlanIndex >= requiredPlanIndex;
+  const handleDowngrade = () => {
+    if (selectedPlan === "free") {
+      // Cancel subscription
+      cancelMutation.mutate();
+    } else {
+      // Downgrade to lower paid plan
+      setIsLoading(selectedPlan);
+      createCheckoutMutation.mutate({
+        planId: selectedPlan as "pro" | "master",
+        isYearly,
+      });
+    }
+    setShowDowngradeDialog(false);
   };
 
-  const promptUpgrade = (feature: string) => {
-    const required = featureRequirements[feature];
-    if (required) {
-      setRequiredPlan(required);
-      setShowUpgradeDialog(true);
-    }
+  const handleManageBilling = () => {
+    billingPortalMutation.mutate();
   };
 
   return (
@@ -234,21 +261,27 @@ export default function Pricing() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
             <Link href="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-            </Link>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
+              <div className="flex items-center gap-2 cursor-pointer">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-bold text-xl">Swarm</span>
               </div>
-              <span className="font-bold text-xl">Swarm</span>
-            </div>
+            </Link>
           </div>
           
           <div className="flex items-center gap-3">
+            {isAuthenticated && currentPlan !== "free" && (
+              <Button variant="outline" size="sm" onClick={handleManageBilling}>
+                <CreditCard className="w-4 h-4 mr-2" />
+                Manage Billing
+              </Button>
+            )}
             {isAuthenticated && (
               <Badge variant="outline" className="text-sm">
                 Current Plan: {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
@@ -264,9 +297,9 @@ export default function Pricing() {
                 </Button>
               </Link>
             ) : (
-              <Link href="/">
+              <a href={getLoginUrl()}>
                 <Button size="sm">Sign In</Button>
-              </Link>
+              </a>
             )}
           </div>
         </div>
@@ -303,11 +336,21 @@ export default function Pricing() {
           </div>
         </div>
 
+        {/* Test Mode Alert */}
+        <Alert className="mb-8 max-w-3xl mx-auto">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Test Mode:</strong> Use card number <code className="bg-muted px-1 rounded">4242 4242 4242 4242</code> with any future expiry date and CVC to test payments.
+          </AlertDescription>
+        </Alert>
+
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           {plans.map((plan) => {
             const isCurrentPlan = plan.id === currentPlan;
-            const isUpgrade = plans.findIndex(p => p.id === plan.id) > plans.findIndex(p => p.id === currentPlan);
+            const targetPlanIndex = planOrder.indexOf(plan.id);
+            const isUpgrade = targetPlanIndex > currentPlanIndex;
+            const isDowngrade = targetPlanIndex < currentPlanIndex;
             
             return (
               <Card 
@@ -387,7 +430,7 @@ export default function Pricing() {
                     ) : isCurrentPlan ? (
                       "Current Plan"
                     ) : plan.id === "free" ? (
-                      "Get Started"
+                      isDowngrade ? "Downgrade to Free" : "Get Started"
                     ) : isUpgrade ? (
                       "Upgrade Now"
                     ) : (
@@ -400,142 +443,89 @@ export default function Pricing() {
           })}
         </div>
 
-        {/* Plan Comparison Table */}
-        <div className="mb-16">
-          <h2 className="text-2xl font-bold text-center mb-8">Feature Comparison</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-4">Feature</th>
-                  {plans.map(plan => (
-                    <th key={plan.id} className="text-center p-4">
-                      <span className={`font-bold ${plan.id === currentPlan ? "text-green-600" : ""}`}>
-                        {plan.name}
-                      </span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b">
-                  <td className="p-4">Project Slots</td>
-                  <td className="text-center p-4">3</td>
-                  <td className="text-center p-4">15</td>
-                  <td className="text-center p-4">30</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-4">Commission Rate</td>
-                  <td className="text-center p-4">25%</td>
-                  <td className="text-center p-4">15%</td>
-                  <td className="text-center p-4">10%</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-4">AI Training Sessions</td>
-                  <td className="text-center p-4">2/month</td>
-                  <td className="text-center p-4">10/month</td>
-                  <td className="text-center p-4">40/month</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-4">Team Members</td>
-                  <td className="text-center p-4"><X className="w-4 h-4 mx-auto text-gray-300" /></td>
-                  <td className="text-center p-4">Up to 3</td>
-                  <td className="text-center p-4">Up to 10</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-4">Custom Project Requests</td>
-                  <td className="text-center p-4"><X className="w-4 h-4 mx-auto text-gray-300" /></td>
-                  <td className="text-center p-4">$500+ budget</td>
-                  <td className="text-center p-4">Any budget</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-4">Revenue Splitting</td>
-                  <td className="text-center p-4"><X className="w-4 h-4 mx-auto text-gray-300" /></td>
-                  <td className="text-center p-4">Basic</td>
-                  <td className="text-center p-4">Advanced</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-4">Storage</td>
-                  <td className="text-center p-4">2GB</td>
-                  <td className="text-center p-4">25GB</td>
-                  <td className="text-center p-4">100GB</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
         {/* Additional Benefits */}
-        <div className="bg-muted/50 rounded-2xl p-8 mb-16">
-          <h2 className="text-2xl font-bold text-center mb-8">Additional Benefits</h2>
-          <div className="grid md:grid-cols-4 gap-6">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl font-bold text-center mb-8">All Plans Include</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {additionalBenefits.map((benefit, i) => (
-              <div key={i} className="text-center">
-                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
-                  <benefit.icon className="w-6 h-6 text-amber-600" />
-                </div>
-                <h3 className="font-semibold mb-1">{benefit.title}</h3>
-                <p className="text-sm text-muted-foreground">{benefit.description}</p>
-              </div>
+              <Card key={i} className="text-center">
+                <CardContent className="pt-6">
+                  <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                    <benefit.icon className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <h3 className="font-semibold mb-1">{benefit.title}</h3>
+                  <p className="text-sm text-muted-foreground">{benefit.description}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
 
-        {/* FAQ */}
-        <div className="max-w-3xl mx-auto">
+        {/* FAQ Section */}
+        <div className="max-w-3xl mx-auto mt-16">
           <h2 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
           <div className="space-y-4">
-            <div className="p-4 rounded-lg border">
-              <h3 className="font-semibold mb-2">Can I switch plans at any time?</h3>
-              <p className="text-muted-foreground">Yes! You can upgrade or downgrade your plan at any time. When upgrading, you'll be charged the prorated difference. When downgrading, you'll receive credit towards future billing.</p>
-            </div>
-            <div className="p-4 rounded-lg border">
-              <h3 className="font-semibold mb-2">What happens to my projects if I downgrade?</h3>
-              <p className="text-muted-foreground">Your existing projects remain accessible, but you won't be able to create new ones beyond your plan's limit. We recommend archiving unused projects before downgrading.</p>
-            </div>
-            <div className="p-4 rounded-lg border">
-              <h3 className="font-semibold mb-2">Do you offer refunds?</h3>
-              <p className="text-muted-foreground">Yes, we offer a 14-day money-back guarantee on all paid plans. If you're not satisfied, contact support for a full refund.</p>
-            </div>
-            <div className="p-4 rounded-lg border">
-              <h3 className="font-semibold mb-2">How does team billing work?</h3>
-              <p className="text-muted-foreground">Team seats are included in Pro and Master plans. Additional seats can be purchased at a discounted rate. All team members share the plan's resources.</p>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Can I switch plans anytime?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Yes! You can upgrade or downgrade your plan at any time. When upgrading, you'll be charged the prorated difference. When downgrading, the change takes effect at the end of your current billing period.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">What payment methods do you accept?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  We accept all major credit cards (Visa, MasterCard, American Express) through our secure payment processor, Stripe.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Is there a refund policy?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  We offer a 14-day money-back guarantee for all paid plans. If you're not satisfied, contact support within 14 days of your purchase for a full refund.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
 
-      {/* Upgrade Dialog */}
-      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+      {/* Downgrade Confirmation Dialog */}
+      <Dialog open={showDowngradeDialog} onOpenChange={setShowDowngradeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="w-5 h-5 text-amber-500" />
-              Upgrade Required
-            </DialogTitle>
+            <DialogTitle>Confirm Plan Change</DialogTitle>
             <DialogDescription>
-              This feature requires the {requiredPlan?.charAt(0).toUpperCase()}{requiredPlan?.slice(1)} plan or higher.
+              {selectedPlan === "free" ? (
+                <>
+                  Are you sure you want to cancel your subscription and downgrade to the Free plan? 
+                  You'll lose access to premium features at the end of your current billing period.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to downgrade to the {selectedPlan?.charAt(0).toUpperCase()}{selectedPlan?.slice(1)} plan?
+                  Your new plan will take effect at the end of your current billing period.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <p className="text-muted-foreground mb-4">
-              Upgrade your plan to unlock this feature and many more benefits.
-            </p>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setShowUpgradeDialog(false)}>
-                Maybe Later
-              </Button>
-              <Button 
-                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
-                onClick={() => {
-                  setShowUpgradeDialog(false);
-                  handleSubscribe(requiredPlan || "pro");
-                }}
-              >
-                Upgrade Now
-              </Button>
-            </div>
-          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDowngradeDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDowngrade}>
+              {selectedPlan === "free" ? "Cancel Subscription" : "Confirm Downgrade"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

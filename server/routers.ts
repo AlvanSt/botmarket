@@ -9,6 +9,7 @@ import { storagePut, storageGet } from "./storage";
 import { nanoid } from "nanoid";
 import { createCheckoutSession, getCheckoutSession } from "./stripe/checkout";
 import { calculateSellerEarnings } from "./stripe/products";
+import { createSubscriptionCheckout, cancelSubscription, createBillingPortalSession } from "./stripe/subscription";
 
 // Admin procedure - requires admin role
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -884,7 +885,7 @@ export const appRouter = router({
         }
         
         // Pro users have minimum budget requirement
-        if (user.subscriptionTier === 'creator' && (input.budgetMin || 0) < 500) {
+        if (user.subscriptionTier === 'pro' && (input.budgetMin || 0) < 500) {
           throw new TRPCError({ 
             code: 'BAD_REQUEST', 
             message: 'Pro plan requires minimum $500 budget for custom projects' 
@@ -1115,6 +1116,79 @@ export const appRouter = router({
     
     getRecentActions: adminProcedure.query(async () => {
       return db.getAdminActions(50);
+    }),
+  }),
+
+  // ============================================
+  // SUBSCRIPTION ROUTER
+  // ============================================
+  subscription: router({
+    // Get current subscription status
+    getStatus: protectedProcedure.query(async ({ ctx }) => {
+      const user = ctx.user;
+      return {
+        plan: user.subscriptionTier || 'free',
+        stripeCustomerId: user.stripeCustomerId || null,
+        stripeSubscriptionId: user.stripeSubscriptionId || null,
+        subscriptionStatus: user.subscriptionStatus || null,
+        currentPeriodEnd: user.currentPeriodEnd || null,
+        cancelAtPeriodEnd: user.cancelAtPeriodEnd || false,
+      };
+    }),
+
+    // Create checkout session for subscription
+    createCheckout: protectedProcedure
+      .input(z.object({
+        planId: z.enum(['pro', 'master']),
+        isYearly: z.boolean(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const origin = ctx.req.headers.origin || `${ctx.req.protocol}://${ctx.req.get('host')}`;
+        
+        const checkout = await createSubscriptionCheckout({
+          userId: ctx.user.id,
+          userEmail: ctx.user.email || '',
+          userName: ctx.user.name || '',
+          planId: input.planId,
+          isYearly: input.isYearly,
+          origin,
+          currentPlan: ctx.user.subscriptionTier || 'free',
+        });
+        
+        return {
+          checkoutUrl: checkout.url,
+          sessionId: checkout.sessionId,
+        };
+      }),
+
+    // Cancel subscription
+    cancel: protectedProcedure.mutation(async ({ ctx }) => {
+      if (!ctx.user.stripeSubscriptionId) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active subscription' });
+      }
+      
+      await cancelSubscription(ctx.user.stripeSubscriptionId);
+      
+      await db.updateUserSubscription(ctx.user.id, {
+        cancelAtPeriodEnd: true,
+      });
+      
+      return { success: true };
+    }),
+
+    // Get billing portal URL
+    getBillingPortal: protectedProcedure.mutation(async ({ ctx }) => {
+      if (!ctx.user.stripeCustomerId) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No billing account' });
+      }
+      
+      const origin = ctx.req.headers.origin || `${ctx.req.protocol}://${ctx.req.get('host')}`;
+      const session = await createBillingPortalSession(
+        ctx.user.stripeCustomerId,
+        `${origin}/dashboard`
+      );
+      
+      return { url: session.url };
     }),
   }),
 });

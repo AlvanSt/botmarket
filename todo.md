@@ -21,6 +21,10 @@
 - [x] Training configuration
 - [x] Real-time training dashboard
 - [x] Model export functionality
+- [x] Clear data input format guidance (ZIP with class folders for images, CSV/JSON for tabular)
+- [x] "Use in AI Builder" button for purchased datasets
+- [x] Purchased items library accessible from AI Builder
+- [x] No LLM - only user-trained models
 - [ ] Model publishing to marketplace
 
 ## Project Management Dashboard
@@ -34,6 +38,9 @@
 - [x] Stripe checkout session creation
 - [x] Stripe webhook handler
 - [x] Purchase success page
+- [x] Real Stripe subscription payments for plans
+- [x] Plan selection with upgrade/downgrade
+- [x] Subscription success page
 - [ ] Seller payout system (Stripe Connect)
 - [ ] Transaction history page
 - [x] Earnings tracking
@@ -61,7 +68,7 @@
 - [x] Modern landing page
 - [x] Dashboard layout
 - [x] Loading states and error handling
-
+- [x] Back navigation to previous pages
 
 ## Swarm Rebranding
 - [x] Rebrand from BotMarket to Swarm
@@ -71,14 +78,13 @@
 - [x] Add seed data for listings
 - [x] Update all page titles and headers
 
-
 ## Enhanced Features (Phase 2)
 - [x] Smart search with keyword extraction
 - [x] Advanced filtering (price, rating, compatibility)
 - [x] Trending & Popular sections
 - [x] Removed collections feature (per user request)
 - [x] Pricing page with Free/Pro/Master tiers
-- [ ] Subscription checkout integration
+- [x] Subscription checkout integration
 - [x] Enhanced analytics dashboard
 - [x] Geographic analytics
 - [x] Affiliate program with referral tracking
@@ -92,11 +98,12 @@
 - [x] Challenges and competitions
 - [x] Tutorials and learning resources
 
-
 ## Plan Restrictions & UI Cleanup
 - [x] Add plan-based feature restrictions (Free/Pro/Master)
 - [x] Show upgrade prompts for restricted features
 - [x] Implement plan checking in custom projects
+- [x] Plan selection page showing current plan
+- [x] Upgrade/downgrade functionality between plans
 
 ## Team & Collaboration Features
 - [x] Role-based permissions (Owner, Admin, Editor, Viewer)
@@ -150,7 +157,5 @@
 ## Tests
 - [x] Auth logout test
 - [x] Stripe webhook tests (3 tests)
-- [x] Teams router tests (3 tests)
-- [x] Affiliates router tests (2 tests)
-- [x] Subscriptions router tests (1 test)
-- [x] Custom projects router tests (3 tests)
+- [x] Teams router tests (9 tests)
+- All 13 tests passing

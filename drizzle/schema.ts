@@ -17,7 +17,12 @@ export const users = mysqlTable("users", {
   stripeAccountId: varchar("stripeAccountId", { length: 128 }),
   stripeOnboarded: boolean("stripeOnboarded").default(false),
   // Subscription tier
-  subscriptionTier: mysqlEnum("subscriptionTier", ["free", "creator", "team", "enterprise"]).default("free").notNull(),
+  subscriptionTier: mysqlEnum("subscriptionTier", ["free", "pro", "master"]).default("free").notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }),
+  subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false),
   // Stats
   totalEarnings: decimal("totalEarnings", { precision: 12, scale: 2 }).default("0.00"),
   totalSales: int("totalSales").default(0),
