@@ -29,6 +29,13 @@
       "when": 1769536188621,
       "tag": "0003_tiny_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1769540507226,
+      "tag": "0004_curious_red_ghost",
+      "breakpoints": true
     }
   ]
 }

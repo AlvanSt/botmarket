@@ -55,6 +55,9 @@ export const listings = mysqlTable("listings", {
   fileUrl: text("fileUrl"),
   fileKey: varchar("fileKey", { length: 512 }),
   previewImages: json("previewImages").$type<string[]>(),
+  // Demo video
+  demoVideoUrl: text("demoVideoUrl"),
+  demoVideoKey: varchar("demoVideoKey", { length: 512 }),
   // Technical details
   language: varchar("language", { length: 64 }),
   framework: varchar("framework", { length: 64 }),

@@ -175,3 +175,11 @@
 - [x] Remove Purchases page from navigation
 - [x] Remove My Listings page from navigation
 - [x] Update Project Dashboard to show all projects
+
+
+## Demo Video Support
+- [ ] Add demoVideoUrl field to listings table
+- [ ] Create video upload endpoint
+- [ ] Add video upload to create/edit listing forms
+- [ ] Display demo videos on listing detail pages
+- [ ] Add video player component
