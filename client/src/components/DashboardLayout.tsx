@@ -33,8 +33,6 @@ const menuItems = [
   { icon: ShoppingCart, label: "Marketplace", path: "/marketplace" },
   { icon: Database, label: "Data Market", path: "/data-marketplace" },
   { icon: Brain, label: "AI Builder", path: "/ai-builder" },
-  { icon: Package, label: "My Listings", path: "/my-listings" },
-  { icon: CreditCard, label: "Purchases", path: "/my-purchases" },
   { icon: Users, label: "Teams", path: "/teams" },
   { icon: DollarSign, label: "Affiliate", path: "/affiliate" },
   { icon: UserPlus, label: "Custom Project", path: "/custom-project" },

@@ -165,3 +165,13 @@
 - [x] Merge analytics into Project Dashboard
 - [x] Remove separate Analytics page from navigation
 - [x] Add analytics charts to project view
+
+
+## AI Builder Enhancement
+- [x] Add data upload functionality (ZIP files with class folders)
+- [x] Add data processing and preview
+- [x] Add labeling interface for training data
+- [x] Add training workflow with progress tracking
+- [x] Remove Purchases page from navigation
+- [x] Remove My Listings page from navigation
+- [x] Update Project Dashboard to show all projects

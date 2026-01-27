@@ -8,10 +8,8 @@ import Home from "./pages/Home";
 import Marketplace from "./pages/Marketplace";
 import ListingDetail from "./pages/ListingDetail";
 import Dashboard from "./pages/Dashboard";
-import MyListings from "./pages/MyListings";
 import CreateListing from "./pages/CreateListing";
 import EditListing from "./pages/EditListing";
-import MyPurchases from "./pages/MyPurchases";
 import AIBuilder from "./pages/AIBuilder";
 import AIProjectDetail from "./pages/AIProjectDetail";
 import AdminPanel from "./pages/AdminPanel";
@@ -42,15 +40,12 @@ function Router() {
       {/* Protected Routes - User Dashboard */}
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/projects" component={ProjectDashboard} />
-      <Route path="/my-listings" component={MyListings} />
       <Route path="/my-listings/new" component={CreateListing} />
       <Route path="/my-listings/:id/edit" component={EditListing} />
-      <Route path="/my-purchases" component={MyPurchases} />
       <Route path="/profile" component={Profile} />
       <Route path="/purchase-success" component={PurchaseSuccess} />
       <Route path="/subscription-success" component={SubscriptionSuccess} />
       <Route path="/custom-project" component={CustomProject} />
-      <Route path="/analytics" component={Analytics} />
       <Route path="/teams" component={Teams} />
       
       {/* AI Builder Routes */}
