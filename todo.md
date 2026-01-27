@@ -159,3 +159,9 @@
 - [x] Stripe webhook tests (3 tests)
 - [x] Teams router tests (9 tests)
 - All 13 tests passing
+
+
+## Analytics Integration
+- [x] Merge analytics into Project Dashboard
+- [x] Remove separate Analytics page from navigation
+- [x] Add analytics charts to project view

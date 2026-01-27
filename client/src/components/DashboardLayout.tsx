@@ -36,7 +36,6 @@ const menuItems = [
   { icon: Package, label: "My Listings", path: "/my-listings" },
   { icon: CreditCard, label: "Purchases", path: "/my-purchases" },
   { icon: Users, label: "Teams", path: "/teams" },
-  { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: DollarSign, label: "Affiliate", path: "/affiliate" },
   { icon: UserPlus, label: "Custom Project", path: "/custom-project" },
   { icon: Settings, label: "Profile", path: "/profile" },

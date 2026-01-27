@@ -38,7 +38,9 @@ import {
   Pencil,
   Trash2,
   Copy,
-  ExternalLink
+  ExternalLink,
+  ShoppingCart,
+  Users
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,6 +49,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from "recharts";
 
 // Mock project data
 const mockProjects = {
@@ -146,16 +165,59 @@ const mockProjects = {
   ]
 };
 
+// Analytics chart data
+const revenueData = [
+  { month: "Jan", revenue: 1200, sales: 24 },
+  { month: "Feb", revenue: 1800, sales: 32 },
+  { month: "Mar", revenue: 2400, sales: 45 },
+  { month: "Apr", revenue: 2100, sales: 38 },
+  { month: "May", revenue: 3200, sales: 56 },
+  { month: "Jun", revenue: 3800, sales: 67 },
+];
+
+const viewsData = [
+  { day: "Mon", views: 120, clicks: 45 },
+  { day: "Tue", views: 180, clicks: 62 },
+  { day: "Wed", views: 240, clicks: 89 },
+  { day: "Thu", views: 210, clicks: 74 },
+  { day: "Fri", views: 320, clicks: 112 },
+  { day: "Sat", views: 280, clicks: 98 },
+  { day: "Sun", views: 190, clicks: 67 },
+];
+
+const categoryData = [
+  { name: "Functions", value: 45, color: "#3b82f6" },
+  { name: "Templates", value: 25, color: "#8b5cf6" },
+  { name: "Applications", value: 20, color: "#22c55e" },
+  { name: "Datasets", value: 10, color: "#f59e0b" },
+];
+
+const topListings = [
+  { name: "Data Validation Library", sales: 89, revenue: 1245, trend: 12 },
+  { name: "Image Resize & Optimize", sales: 67, revenue: 987, trend: 8 },
+  { name: "CSV Parser & Exporter", sales: 54, revenue: 756, trend: -3 },
+  { name: "SaaS Dashboard Starter", sales: 43, revenue: 645, trend: 15 },
+  { name: "Task Manager Bot", sales: 38, revenue: 532, trend: 5 },
+];
+
+const trafficSources = [
+  { source: "Direct", visitors: 1234, percentage: 35 },
+  { source: "Search", visitors: 987, percentage: 28 },
+  { source: "Referral", visitors: 654, percentage: 19 },
+  { source: "Social", visitors: 432, percentage: 12 },
+  { source: "Affiliate", visitors: 210, percentage: 6 },
+];
+
 // Analytics data
 const analyticsData = {
-  totalRevenue: 6127.66,
-  revenueChange: 12.5,
+  totalRevenue: 12450,
+  revenueChange: 23.5,
   totalSales: 234,
-  salesChange: 8.3,
-  totalViews: 5520,
-  viewsChange: -2.1,
-  avgConversion: 4.2,
-  conversionChange: 0.5,
+  salesChange: 18.2,
+  totalViews: 15678,
+  viewsChange: -5.3,
+  avgConversion: 3.2,
+  conversionChange: 0.8,
   topPerformer: "Data Validation Library",
   recentTrend: "up",
 };
@@ -190,6 +252,8 @@ export default function ProjectDashboard() {
   const [search, setSearch] = useState("");
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [timeRange, setTimeRange] = useState("30d");
+  const [activeTab, setActiveTab] = useState("overview");
 
   const handleBulkAction = (action: string) => {
     toast.info(`Bulk ${action} coming soon!`);
@@ -206,9 +270,21 @@ export default function ProjectDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">Project Dashboard</h1>
-            <p className="text-muted-foreground">Manage all your projects, listings, and purchases</p>
+            <p className="text-muted-foreground">Manage all your projects, listings, purchases, and analytics</p>
           </div>
           <div className="flex gap-2">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[150px]">
+                <Calendar className="w-4 h-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last 90 days</SelectItem>
+                <SelectItem value="1y">Last year</SelectItem>
+              </SelectContent>
+            </Select>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -240,109 +316,116 @@ export default function ProjectDashboard() {
           </div>
         </div>
 
-        {/* Analytics Overview */}
+        {/* Key Metrics */}
         <div className="grid md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Total Revenue</CardDescription>
+              <CardDescription className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                Total Revenue
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold">${analyticsData.totalRevenue.toLocaleString()}</span>
-                <div className={`flex items-center text-sm ${analyticsData.revenueChange >= 0 ? "text-green-600" : "text-red-600"}`}>
-                  {analyticsData.revenueChange >= 0 ? (
-                    <ArrowUpRight className="w-4 h-4" />
-                  ) : (
-                    <ArrowDownRight className="w-4 h-4" />
-                  )}
-                  {Math.abs(analyticsData.revenueChange)}%
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-2xl font-bold">${analyticsData.totalRevenue.toLocaleString()}</p>
+                  <div className={`flex items-center text-sm ${analyticsData.revenueChange >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {analyticsData.revenueChange >= 0 ? (
+                      <ArrowUpRight className="w-4 h-4" />
+                    ) : (
+                      <ArrowDownRight className="w-4 h-4" />
+                    )}
+                    {Math.abs(analyticsData.revenueChange)}%
+                  </div>
                 </div>
+                <TrendingUp className="w-8 h-8 text-green-500 opacity-50" />
               </div>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Total Sales</CardDescription>
+              <CardDescription className="flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4" />
+                Total Sales
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold">{analyticsData.totalSales}</span>
-                <div className={`flex items-center text-sm ${analyticsData.salesChange >= 0 ? "text-green-600" : "text-red-600"}`}>
-                  {analyticsData.salesChange >= 0 ? (
-                    <ArrowUpRight className="w-4 h-4" />
-                  ) : (
-                    <ArrowDownRight className="w-4 h-4" />
-                  )}
-                  {Math.abs(analyticsData.salesChange)}%
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{analyticsData.totalSales}</p>
+                  <div className={`flex items-center text-sm ${analyticsData.salesChange >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {analyticsData.salesChange >= 0 ? (
+                      <ArrowUpRight className="w-4 h-4" />
+                    ) : (
+                      <ArrowDownRight className="w-4 h-4" />
+                    )}
+                    {Math.abs(analyticsData.salesChange)}%
+                  </div>
                 </div>
+                <ShoppingCart className="w-8 h-8 text-blue-500 opacity-50" />
               </div>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Total Views</CardDescription>
+              <CardDescription className="flex items-center gap-2">
+                <Eye className="w-4 h-4" />
+                Total Views
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold">{analyticsData.totalViews.toLocaleString()}</span>
-                <div className={`flex items-center text-sm ${analyticsData.viewsChange >= 0 ? "text-green-600" : "text-red-600"}`}>
-                  {analyticsData.viewsChange >= 0 ? (
-                    <ArrowUpRight className="w-4 h-4" />
-                  ) : (
-                    <ArrowDownRight className="w-4 h-4" />
-                  )}
-                  {Math.abs(analyticsData.viewsChange)}%
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{analyticsData.totalViews.toLocaleString()}</p>
+                  <div className={`flex items-center text-sm ${analyticsData.viewsChange >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {analyticsData.viewsChange >= 0 ? (
+                      <ArrowUpRight className="w-4 h-4" />
+                    ) : (
+                      <ArrowDownRight className="w-4 h-4" />
+                    )}
+                    {Math.abs(analyticsData.viewsChange)}%
+                  </div>
                 </div>
+                <Eye className="w-8 h-8 text-purple-500 opacity-50" />
               </div>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Avg. Conversion</CardDescription>
+              <CardDescription className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Conversion Rate
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold">{analyticsData.avgConversion}%</span>
-                <div className={`flex items-center text-sm ${analyticsData.conversionChange >= 0 ? "text-green-600" : "text-red-600"}`}>
-                  {analyticsData.conversionChange >= 0 ? (
-                    <ArrowUpRight className="w-4 h-4" />
-                  ) : (
-                    <ArrowDownRight className="w-4 h-4" />
-                  )}
-                  {Math.abs(analyticsData.conversionChange)}%
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{analyticsData.avgConversion}%</p>
+                  <div className={`flex items-center text-sm ${analyticsData.conversionChange >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {analyticsData.conversionChange >= 0 ? (
+                      <ArrowUpRight className="w-4 h-4" />
+                    ) : (
+                      <ArrowDownRight className="w-4 h-4" />
+                    )}
+                    {Math.abs(analyticsData.conversionChange)}%
+                  </div>
                 </div>
+                <BarChart3 className="w-8 h-8 text-amber-500 opacity-50" />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Search & Filter */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search projects..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Projects</SelectItem>
-              <SelectItem value="uploaded">My Listings</SelectItem>
-              <SelectItem value="purchased">Purchased</SelectItem>
-              <SelectItem value="ai_projects">AI Projects</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Project Tabs */}
-        <Tabs defaultValue="uploaded" className="space-y-4">
-          <TabsList>
+        {/* Main Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Analytics
+            </TabsTrigger>
             <TabsTrigger value="uploaded" className="flex items-center gap-2">
               <Upload className="w-4 h-4" />
               My Listings ({mockProjects.uploaded.length})
@@ -355,10 +438,186 @@ export default function ProjectDashboard() {
               <Brain className="w-4 h-4" />
               AI Projects ({mockProjects.aiProjects.length})
             </TabsTrigger>
+            <TabsTrigger value="top" className="flex items-center gap-2">
+              <Star className="w-4 h-4" />
+              Top Performers
+            </TabsTrigger>
           </TabsList>
+
+          {/* Analytics Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            {/* Charts Row */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Revenue Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Revenue & Sales Over Time</CardTitle>
+                  <CardDescription>Monthly revenue and sales performance</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={revenueData}>
+                        <defs>
+                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="month" className="text-xs" />
+                        <YAxis className="text-xs" />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--background))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }} 
+                        />
+                        <Legend />
+                        <Area 
+                          type="monotone" 
+                          dataKey="revenue" 
+                          stroke="#f59e0b" 
+                          fillOpacity={1} 
+                          fill="url(#colorRevenue)" 
+                          name="Revenue ($)"
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="sales" 
+                          stroke="#3b82f6" 
+                          strokeWidth={2}
+                          name="Sales"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Traffic Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Views & Clicks</CardTitle>
+                  <CardDescription>Weekly traffic performance</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={viewsData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="day" className="text-xs" />
+                        <YAxis className="text-xs" />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--background))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }} 
+                        />
+                        <Legend />
+                        <Bar dataKey="views" fill="#8b5cf6" name="Views" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="clicks" fill="#22c55e" name="Clicks" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Category & Traffic Sources Row */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Category Distribution */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Sales by Category</CardTitle>
+                  <CardDescription>Distribution of sales across categories</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Traffic Sources */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Traffic Sources</CardTitle>
+                  <CardDescription>Where your visitors come from</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {trafficSources.map((source, i) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <div className="w-20 text-sm font-medium">{source.source}</div>
+                        <div className="flex-1">
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-amber-500 to-orange-600 rounded-full"
+                              style={{ width: `${source.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="w-16 text-sm text-right">
+                          {source.visitors.toLocaleString()}
+                        </div>
+                        <div className="w-10 text-sm text-muted-foreground text-right">
+                          {source.percentage}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           {/* My Listings Tab */}
           <TabsContent value="uploaded">
+            {/* Search & Filter */}
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search listings..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={filter} onValueChange={setFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-4">
               {mockProjects.uploaded.map((project) => (
                 <Card key={project.id}>
@@ -434,10 +693,6 @@ export default function ProjectDashboard() {
                               Version History
                             </DropdownMenuItem>
                             <DropdownMenuItem>
-                              <BarChart3 className="w-4 h-4 mr-2" />
-                              View Analytics
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
                               <Copy className="w-4 h-4 mr-2" />
                               Duplicate
                             </DropdownMenuItem>
@@ -491,6 +746,14 @@ export default function ProjectDashboard() {
                           <Download className="w-4 h-4 mr-2" />
                           Download
                         </Button>
+                        {project.category === "dataset" && (
+                          <Link href="/ai-builder">
+                            <Button size="sm" className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
+                              <Brain className="w-4 h-4 mr-2" />
+                              Use in AI Builder
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -540,14 +803,21 @@ export default function ProjectDashboard() {
                         ) : (
                           <div className="w-32">
                             <Progress value={project.progress} className="h-2" />
-                            <p className="text-xs text-muted-foreground mt-1 text-center">{project.progress}% complete</p>
+                            <p className="text-xs text-muted-foreground mt-1 text-center">
+                              {project.progress}% complete
+                            </p>
                           </div>
                         )}
                         <Link href={`/ai-builder/${project.id}`}>
                           <Button variant="outline" size="sm">
-                            View Project
+                            View Details
                           </Button>
                         </Link>
+                        {project.status === "completed" && !project.isPublished && (
+                          <Button size="sm" className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
+                            Publish to Marketplace
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -555,38 +825,79 @@ export default function ProjectDashboard() {
               ))}
             </div>
           </TabsContent>
+
+          {/* Top Performers Tab */}
+          <TabsContent value="top">
+            <Card>
+              <CardHeader>
+                <CardTitle>Top Performing Listings</CardTitle>
+                <CardDescription>Your best selling items this period</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {topListings.map((listing, i) => (
+                    <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">
+                        {i + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{listing.name}</p>
+                        <p className="text-sm text-muted-foreground">{listing.sales} sales</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">${listing.revenue}</p>
+                        <div className={`flex items-center justify-end text-sm ${listing.trend >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          {listing.trend >= 0 ? (
+                            <ArrowUpRight className="w-3 h-3" />
+                          ) : (
+                            <ArrowDownRight className="w-3 h-3" />
+                          )}
+                          {Math.abs(listing.trend)}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
 
         {/* Version History Dialog */}
         <Dialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Version History</DialogTitle>
               <DialogDescription>
-                {selectedProject?.title} - All versions and changes
+                {selectedProject?.title}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
               {selectedProject?.versions?.map((version: any, i: number) => (
-                <div key={i} className="flex items-start gap-4 p-4 rounded-lg border">
-                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <GitBranch className="w-5 h-5 text-amber-600" />
+                <div key={i} className="flex items-start gap-4 p-3 rounded-lg border">
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                    <GitBranch className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">v{version.version}</span>
-                      <span className="text-sm text-muted-foreground">{version.date}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">v{version.version}</span>
+                      {i === 0 && <Badge>Latest</Badge>}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">{version.changes}</p>
+                    <p className="text-sm text-muted-foreground">{version.changes}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{version.date}</p>
                   </div>
-                  {i === 0 && (
-                    <Badge className="bg-green-100 text-green-800">Current</Badge>
+                  {i !== 0 && (
+                    <Button variant="ghost" size="sm">
+                      Restore
+                    </Button>
                   )}
                 </div>
               ))}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowVersionHistory(false)}>Close</Button>
+              <Button variant="outline" onClick={() => setShowVersionHistory(false)}>
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
