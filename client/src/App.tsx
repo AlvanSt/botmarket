@@ -5,31 +5,54 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Marketplace from "./pages/Marketplace";
+import ListingDetail from "./pages/ListingDetail";
+import Dashboard from "./pages/Dashboard";
+import MyListings from "./pages/MyListings";
+import CreateListing from "./pages/CreateListing";
+import EditListing from "./pages/EditListing";
+import MyPurchases from "./pages/MyPurchases";
+import AIBuilder from "./pages/AIBuilder";
+import AIProjectDetail from "./pages/AIProjectDetail";
+import AdminPanel from "./pages/AdminPanel";
+import Profile from "./pages/Profile";
+import PurchaseSuccess from "./pages/PurchaseSuccess";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
+      {/* Public Routes */}
+      <Route path="/" component={Home} />
+      <Route path="/marketplace" component={Marketplace} />
+      <Route path="/listing/:slug" component={ListingDetail} />
+      
+      {/* Protected Routes - User Dashboard */}
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/my-listings" component={MyListings} />
+      <Route path="/my-listings/new" component={CreateListing} />
+      <Route path="/my-listings/:id/edit" component={EditListing} />
+      <Route path="/my-purchases" component={MyPurchases} />
+      <Route path="/profile" component={Profile} />
+      <Route path="/purchase-success" component={PurchaseSuccess} />
+      
+      {/* AI Builder Routes */}
+      <Route path="/ai-builder" component={AIBuilder} />
+      <Route path="/ai-builder/:id" component={AIProjectDetail} />
+      
+      {/* Admin Routes */}
+      <Route path="/admin" component={AdminPanel} />
+      
+      {/* Fallback */}
+      <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <Router />
