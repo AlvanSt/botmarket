@@ -22,6 +22,9 @@ import Affiliate from "./pages/Affiliate";
 import CustomProject from "./pages/CustomProject";
 import Community from "./pages/Community";
 import Analytics from "./pages/Analytics";
+import Teams from "./pages/Teams";
+import DataMarketplace from "./pages/DataMarketplace";
+import ProjectDashboard from "./pages/ProjectDashboard";
 
 function Router() {
   return (
@@ -29,6 +32,7 @@ function Router() {
       {/* Public Routes */}
       <Route path="/" component={Home} />
       <Route path="/marketplace" component={Marketplace} />
+      <Route path="/data-marketplace" component={DataMarketplace} />
       <Route path="/listing/:slug" component={ListingDetail} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/affiliate" component={Affiliate} />
@@ -36,6 +40,7 @@ function Router() {
       
       {/* Protected Routes - User Dashboard */}
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/projects" component={ProjectDashboard} />
       <Route path="/my-listings" component={MyListings} />
       <Route path="/my-listings/new" component={CreateListing} />
       <Route path="/my-listings/:id/edit" component={EditListing} />
@@ -44,6 +49,7 @@ function Router() {
       <Route path="/purchase-success" component={PurchaseSuccess} />
       <Route path="/custom-project" component={CustomProject} />
       <Route path="/analytics" component={Analytics} />
+      <Route path="/teams" component={Teams} />
       
       {/* AI Builder Routes */}
       <Route path="/ai-builder" component={AIBuilder} />

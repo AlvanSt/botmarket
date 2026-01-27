@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { 
@@ -16,10 +18,9 @@ import {
   Star,
   Users,
   BarChart3,
-  Palette,
-  Headphones,
-  HardDrive,
-  Gift
+  Gift,
+  Lock,
+  Loader2
 } from "lucide-react";
 
 const plans = [
@@ -29,9 +30,21 @@ const plans = [
     description: "Perfect for getting started",
     monthlyPrice: 0,
     yearlyPrice: 0,
+    stripePriceIdMonthly: null,
+    stripePriceIdYearly: null,
     icon: Zap,
     color: "from-gray-500 to-gray-600",
     popular: false,
+    limits: {
+      projectSlots: 3,
+      commission: 25,
+      aiTrainingSessions: 2,
+      dataCredits: 5,
+      templateDownloads: 3,
+      appTrials: 5,
+      teamMembers: 0,
+      storage: "2GB",
+    },
     features: [
       { name: "Project Slots", value: "3", included: true },
       { name: "Marketplace Commission", value: "25%", included: true },
@@ -45,6 +58,7 @@ const plans = [
       { name: "Analytics Dashboard", value: "Basic", included: true },
       { name: "Custom Branding", value: null, included: false },
       { name: "Featured Listings", value: null, included: false },
+      { name: "Custom Project Requests", value: null, included: false },
       { name: "Storage Space", value: "2GB", included: true },
       { name: "Support Level", value: "Community Forum", included: true },
     ],
@@ -54,10 +68,22 @@ const plans = [
     name: "Pro",
     description: "For serious creators and small teams",
     monthlyPrice: 14.99,
-    yearlyPrice: 143.90, // 20% off
+    yearlyPrice: 143.90,
+    stripePriceIdMonthly: "price_pro_monthly",
+    stripePriceIdYearly: "price_pro_yearly",
     icon: Star,
     color: "from-amber-500 to-orange-600",
     popular: true,
+    limits: {
+      projectSlots: 15,
+      commission: 15,
+      aiTrainingSessions: 10,
+      dataCredits: 20,
+      templateDownloads: 15,
+      appTrials: 25,
+      teamMembers: 3,
+      storage: "25GB",
+    },
     features: [
       { name: "Project Slots", value: "15", included: true },
       { name: "Marketplace Commission", value: "15%", included: true },
@@ -71,6 +97,7 @@ const plans = [
       { name: "Analytics Dashboard", value: "Standard", included: true },
       { name: "Custom Branding", value: null, included: false },
       { name: "Featured Listings", value: "$7/week", included: true },
+      { name: "Custom Project Requests", value: "$500+ budget", included: true },
       { name: "Storage Space", value: "25GB", included: true },
       { name: "Support Level", value: "Email (48hr)", included: true },
     ],
@@ -80,10 +107,22 @@ const plans = [
     name: "Master",
     description: "For power users and enterprises",
     monthlyPrice: 49.99,
-    yearlyPrice: 479.90, // 20% off
+    yearlyPrice: 479.90,
+    stripePriceIdMonthly: "price_master_monthly",
+    stripePriceIdYearly: "price_master_yearly",
     icon: Crown,
     color: "from-purple-500 to-indigo-600",
     popular: false,
+    limits: {
+      projectSlots: 30,
+      commission: 10,
+      aiTrainingSessions: 40,
+      dataCredits: 50,
+      templateDownloads: 40,
+      appTrials: -1, // unlimited
+      teamMembers: 10,
+      storage: "100GB",
+    },
     features: [
       { name: "Project Slots", value: "30", included: true },
       { name: "Marketplace Commission", value: "10%", included: true },
@@ -97,6 +136,7 @@ const plans = [
       { name: "Analytics Dashboard", value: "Advanced", included: true },
       { name: "Custom Branding", value: "Yes", included: true },
       { name: "Featured Listings", value: "2 free/month", included: true },
+      { name: "Custom Project Requests", value: "Any budget", included: true },
       { name: "Storage Space", value: "100GB", included: true },
       { name: "Support Level", value: "Priority (24hr)", included: true },
     ],
@@ -110,11 +150,27 @@ const additionalBenefits = [
   { icon: Star, title: "Education Discount", description: "40% off for students/teachers" },
 ];
 
-export default function Pricing() {
-  const { isAuthenticated } = useAuth();
-  const [isYearly, setIsYearly] = useState(false);
+// Feature comparison for upgrade prompts
+const featureRequirements: Record<string, string> = {
+  "team_collaboration": "pro",
+  "revenue_splitting": "pro",
+  "custom_project": "pro",
+  "custom_branding": "master",
+  "advanced_analytics": "master",
+  "priority_support": "master",
+};
 
-  const handleSubscribe = (planId: string) => {
+export default function Pricing() {
+  const { isAuthenticated, user } = useAuth();
+  const [isYearly, setIsYearly] = useState(false);
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [requiredPlan, setRequiredPlan] = useState<string | null>(null);
+
+  // Get current user's plan
+  const currentPlan = user?.subscriptionTier || "free";
+
+  const handleSubscribe = async (planId: string) => {
     if (!isAuthenticated) {
       toast.error("Please sign in to subscribe");
       return;
@@ -124,9 +180,52 @@ export default function Pricing() {
       toast.success("You're already on the Free plan!");
       return;
     }
+
+    if (planId === currentPlan) {
+      toast.info("You're already on this plan!");
+      return;
+    }
+
+    setIsLoading(planId);
+
+    try {
+      // In production, this would call the Stripe checkout API
+      // For now, show a toast with test card info
+      toast.success(
+        `Redirecting to checkout for ${planId.charAt(0).toUpperCase() + planId.slice(1)} plan...`,
+        {
+          description: "Use test card: 4242 4242 4242 4242"
+        }
+      );
+      
+      // Simulate redirect delay
+      setTimeout(() => {
+        setIsLoading(null);
+        // In production: window.open(checkoutUrl, '_blank');
+      }, 1500);
+    } catch (error) {
+      toast.error("Failed to start checkout. Please try again.");
+      setIsLoading(null);
+    }
+  };
+
+  const checkFeatureAccess = (feature: string): boolean => {
+    const requiredPlanForFeature = featureRequirements[feature];
+    if (!requiredPlanForFeature) return true;
     
-    // TODO: Integrate with Stripe subscription checkout
-    toast.info("Subscription checkout coming soon!");
+    const planOrder = ["free", "pro", "master"];
+    const currentPlanIndex = planOrder.indexOf(currentPlan);
+    const requiredPlanIndex = planOrder.indexOf(requiredPlanForFeature);
+    
+    return currentPlanIndex >= requiredPlanIndex;
+  };
+
+  const promptUpgrade = (feature: string) => {
+    const required = featureRequirements[feature];
+    if (required) {
+      setRequiredPlan(required);
+      setShowUpgradeDialog(true);
+    }
   };
 
   return (
@@ -150,6 +249,11 @@ export default function Pricing() {
           </div>
           
           <div className="flex items-center gap-3">
+            {isAuthenticated && (
+              <Badge variant="outline" className="text-sm">
+                Current Plan: {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
+              </Badge>
+            )}
             <Link href="/marketplace">
               <Button variant="outline" size="sm">Marketplace</Button>
             </Link>
@@ -201,73 +305,164 @@ export default function Pricing() {
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
-          {plans.map((plan) => (
-            <Card 
-              key={plan.id} 
-              className={`relative overflow-hidden ${plan.popular ? "border-amber-500 border-2 shadow-lg" : ""}`}
-            >
-              {plan.popular && (
-                <div className="absolute top-0 right-0">
-                  <Badge className="rounded-none rounded-bl-lg bg-gradient-to-r from-amber-500 to-orange-600">
-                    Most Popular
-                  </Badge>
-                </div>
-              )}
-              <CardHeader className="text-center pb-2">
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${plan.color} flex items-center justify-center mx-auto mb-4`}>
-                  <plan.icon className="w-8 h-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                <CardDescription>{plan.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <div className="mb-6">
-                  <span className="text-4xl font-bold">
-                    ${isYearly 
-                      ? (plan.yearlyPrice / 12).toFixed(2) 
-                      : plan.monthlyPrice.toFixed(2)
-                    }
-                  </span>
-                  <span className="text-muted-foreground">/month</span>
-                  {isYearly && plan.yearlyPrice > 0 && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Billed ${plan.yearlyPrice.toFixed(2)}/year
-                    </p>
-                  )}
-                </div>
-                
-                <div className="space-y-3 text-left">
-                  {plan.features.map((feature, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      {feature.included ? (
-                        <Check className="w-5 h-5 text-green-500 shrink-0" />
-                      ) : (
-                        <X className="w-5 h-5 text-gray-300 shrink-0" />
-                      )}
-                      <span className={`text-sm ${!feature.included ? "text-muted-foreground" : ""}`}>
-                        {feature.name}
-                        {feature.value && (
-                          <span className="font-medium ml-1">({feature.value})</span>
+          {plans.map((plan) => {
+            const isCurrentPlan = plan.id === currentPlan;
+            const isUpgrade = plans.findIndex(p => p.id === plan.id) > plans.findIndex(p => p.id === currentPlan);
+            
+            return (
+              <Card 
+                key={plan.id} 
+                className={`relative overflow-hidden ${plan.popular ? "border-amber-500 border-2 shadow-lg" : ""} ${isCurrentPlan ? "ring-2 ring-green-500" : ""}`}
+              >
+                {plan.popular && (
+                  <div className="absolute top-0 right-0">
+                    <Badge className="rounded-none rounded-bl-lg bg-gradient-to-r from-amber-500 to-orange-600">
+                      Most Popular
+                    </Badge>
+                  </div>
+                )}
+                {isCurrentPlan && (
+                  <div className="absolute top-0 left-0">
+                    <Badge className="rounded-none rounded-br-lg bg-green-500">
+                      Current Plan
+                    </Badge>
+                  </div>
+                )}
+                <CardHeader className="text-center pb-2">
+                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${plan.color} flex items-center justify-center mx-auto mb-4`}>
+                    <plan.icon className="w-8 h-8 text-white" />
+                  </div>
+                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                  <CardDescription>{plan.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <div className="mb-6">
+                    <span className="text-4xl font-bold">
+                      ${isYearly 
+                        ? (plan.yearlyPrice / 12).toFixed(2) 
+                        : plan.monthlyPrice.toFixed(2)
+                      }
+                    </span>
+                    <span className="text-muted-foreground">/month</span>
+                    {isYearly && plan.yearlyPrice > 0 && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Billed ${plan.yearlyPrice.toFixed(2)}/year
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3 text-left">
+                    {plan.features.map((feature, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        {feature.included ? (
+                          <Check className="w-5 h-5 text-green-500 shrink-0" />
+                        ) : (
+                          <X className="w-5 h-5 text-gray-300 shrink-0" />
                         )}
+                        <span className={`text-sm ${!feature.included ? "text-muted-foreground" : ""}`}>
+                          {feature.name}
+                          {feature.value && (
+                            <span className="font-medium ml-1">({feature.value})</span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    className={`w-full ${plan.popular 
+                      ? "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700" 
+                      : ""
+                    }`}
+                    variant={plan.popular ? "default" : "outline"}
+                    onClick={() => handleSubscribe(plan.id)}
+                    disabled={isLoading !== null || isCurrentPlan}
+                  >
+                    {isLoading === plan.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : isCurrentPlan ? (
+                      "Current Plan"
+                    ) : plan.id === "free" ? (
+                      "Get Started"
+                    ) : isUpgrade ? (
+                      "Upgrade Now"
+                    ) : (
+                      "Downgrade"
+                    )}
+                  </Button>
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Plan Comparison Table */}
+        <div className="mb-16">
+          <h2 className="text-2xl font-bold text-center mb-8">Feature Comparison</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-4">Feature</th>
+                  {plans.map(plan => (
+                    <th key={plan.id} className="text-center p-4">
+                      <span className={`font-bold ${plan.id === currentPlan ? "text-green-600" : ""}`}>
+                        {plan.name}
                       </span>
-                    </div>
+                    </th>
                   ))}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  className={`w-full ${plan.popular 
-                    ? "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700" 
-                    : ""
-                  }`}
-                  variant={plan.popular ? "default" : "outline"}
-                  onClick={() => handleSubscribe(plan.id)}
-                >
-                  {plan.id === "free" ? "Get Started" : "Start Free Trial"}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b">
+                  <td className="p-4">Project Slots</td>
+                  <td className="text-center p-4">3</td>
+                  <td className="text-center p-4">15</td>
+                  <td className="text-center p-4">30</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-4">Commission Rate</td>
+                  <td className="text-center p-4">25%</td>
+                  <td className="text-center p-4">15%</td>
+                  <td className="text-center p-4">10%</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-4">AI Training Sessions</td>
+                  <td className="text-center p-4">2/month</td>
+                  <td className="text-center p-4">10/month</td>
+                  <td className="text-center p-4">40/month</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-4">Team Members</td>
+                  <td className="text-center p-4"><X className="w-4 h-4 mx-auto text-gray-300" /></td>
+                  <td className="text-center p-4">Up to 3</td>
+                  <td className="text-center p-4">Up to 10</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-4">Custom Project Requests</td>
+                  <td className="text-center p-4"><X className="w-4 h-4 mx-auto text-gray-300" /></td>
+                  <td className="text-center p-4">$500+ budget</td>
+                  <td className="text-center p-4">Any budget</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-4">Revenue Splitting</td>
+                  <td className="text-center p-4"><X className="w-4 h-4 mx-auto text-gray-300" /></td>
+                  <td className="text-center p-4">Basic</td>
+                  <td className="text-center p-4">Advanced</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-4">Storage</td>
+                  <td className="text-center p-4">2GB</td>
+                  <td className="text-center p-4">25GB</td>
+                  <td className="text-center p-4">100GB</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Additional Benefits */}
@@ -276,8 +471,8 @@ export default function Pricing() {
           <div className="grid md:grid-cols-4 gap-6">
             {additionalBenefits.map((benefit, i) => (
               <div key={i} className="text-center">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mx-auto mb-3">
-                  <benefit.icon className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
+                  <benefit.icon className="w-6 h-6 text-amber-600" />
                 </div>
                 <h3 className="font-semibold mb-1">{benefit.title}</h3>
                 <p className="text-sm text-muted-foreground">{benefit.description}</p>
@@ -286,88 +481,63 @@ export default function Pricing() {
           </div>
         </div>
 
-        {/* Master Plan Exclusive */}
-        <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Crown className="w-8 h-8 text-purple-600" />
-              <div>
-                <CardTitle>Master Plan Exclusive: Custom Project Request</CardTitle>
-                <CardDescription>Get tailored solutions built just for you</CardDescription>
-              </div>
+        {/* FAQ */}
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg border">
+              <h3 className="font-semibold mb-2">Can I switch plans at any time?</h3>
+              <p className="text-muted-foreground">Yes! You can upgrade or downgrade your plan at any time. When upgrading, you'll be charged the prorated difference. When downgrading, you'll receive credit towards future billing.</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div>
-                <h4 className="font-semibold mb-3">Complete Workflow</h4>
-                <ol className="space-y-2 text-sm">
-                  <li className="flex items-start gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                    <span><strong>Request Submission</strong> - Detailed form with project specs, timeline, budget</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                    <span><strong>Admin Review</strong> - Technical feasibility assessment</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold shrink-0">3</span>
-                    <span><strong>Quotation & Planning</strong> - Detailed proposal with milestones</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold shrink-0">4</span>
-                    <span><strong>Development & Testing</strong> - Managed development with updates</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold shrink-0">5</span>
-                    <span><strong>Delivery & Support</strong> - Complete handover with documentation</span>
-                  </li>
-                </ol>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-3">Example Projects</h4>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-purple-600" />
-                    Custom industrial inspection systems
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-purple-600" />
-                    Specialized data processing pipelines
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-purple-600" />
-                    Integration with existing business systems
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-purple-600" />
-                    Performance-optimized models for edge devices
-                  </li>
-                </ul>
-              </div>
+            <div className="p-4 rounded-lg border">
+              <h3 className="font-semibold mb-2">What happens to my projects if I downgrade?</h3>
+              <p className="text-muted-foreground">Your existing projects remain accessible, but you won't be able to create new ones beyond your plan's limit. We recommend archiving unused projects before downgrading.</p>
             </div>
-          </CardContent>
-          <CardFooter>
-            <Link href="/custom-project">
-              <Button className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700">
-                Request Custom Project
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
-
-        {/* FAQ Section */}
-        <div className="mt-16 text-center">
-          <h2 className="text-2xl font-bold mb-4">Have Questions?</h2>
-          <p className="text-muted-foreground mb-6">
-            Contact our team for enterprise pricing or custom solutions.
-          </p>
-          <Button variant="outline" size="lg">
-            <Headphones className="w-4 h-4 mr-2" />
-            Contact Sales
-          </Button>
+            <div className="p-4 rounded-lg border">
+              <h3 className="font-semibold mb-2">Do you offer refunds?</h3>
+              <p className="text-muted-foreground">Yes, we offer a 14-day money-back guarantee on all paid plans. If you're not satisfied, contact support for a full refund.</p>
+            </div>
+            <div className="p-4 rounded-lg border">
+              <h3 className="font-semibold mb-2">How does team billing work?</h3>
+              <p className="text-muted-foreground">Team seats are included in Pro and Master plans. Additional seats can be purchased at a discounted rate. All team members share the plan's resources.</p>
+            </div>
+          </div>
         </div>
       </main>
+
+      {/* Upgrade Dialog */}
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-amber-500" />
+              Upgrade Required
+            </DialogTitle>
+            <DialogDescription>
+              This feature requires the {requiredPlan?.charAt(0).toUpperCase()}{requiredPlan?.slice(1)} plan or higher.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-muted-foreground mb-4">
+              Upgrade your plan to unlock this feature and many more benefits.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowUpgradeDialog(false)}>
+                Maybe Later
+              </Button>
+              <Button 
+                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+                onClick={() => {
+                  setShowUpgradeDialog(false);
+                  handleSubscribe(requiredPlan || "pro");
+                }}
+              >
+                Upgrade Now
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

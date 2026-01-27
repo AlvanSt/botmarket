@@ -221,3 +221,356 @@ export const refundRequests = mysqlTable("refundRequests", {
 
 export type RefundRequest = typeof refundRequests.$inferSelect;
 export type InsertRefundRequest = typeof refundRequests.$inferInsert;
+
+
+// ============================================
+// TEAMS & COLLABORATION
+// ============================================
+export const teams = mysqlTable("teams", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  slug: varchar("slug", { length: 256 }).notNull().unique(),
+  description: text("description"),
+  avatarUrl: text("avatarUrl"),
+  ownerId: int("ownerId").notNull(),
+  // Settings
+  settings: json("settings").$type<{
+    requireApproval?: boolean;
+    allowPublicJoin?: boolean;
+    defaultRole?: string;
+  }>(),
+  // Stats
+  memberCount: int("memberCount").default(1),
+  projectCount: int("projectCount").default(0),
+  totalRevenue: decimal("totalRevenue", { precision: 12, scale: 2 }).default("0.00"),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = typeof teams.$inferInsert;
+
+export const teamMembers = mysqlTable("teamMembers", {
+  id: int("id").autoincrement().primaryKey(),
+  teamId: int("teamId").notNull(),
+  userId: int("userId").notNull(),
+  role: mysqlEnum("role", ["owner", "admin", "editor", "viewer"]).default("viewer").notNull(),
+  // Revenue split percentage for this member
+  revenueSplit: decimal("revenueSplit", { precision: 5, scale: 2 }).default("0.00"),
+  // Status
+  status: mysqlEnum("status", ["active", "invited", "removed"]).default("active").notNull(),
+  invitedBy: int("invitedBy"),
+  joinedAt: timestamp("joinedAt").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = typeof teamMembers.$inferInsert;
+
+export const teamActivity = mysqlTable("teamActivity", {
+  id: int("id").autoincrement().primaryKey(),
+  teamId: int("teamId").notNull(),
+  userId: int("userId").notNull(),
+  actionType: mysqlEnum("actionType", [
+    "member_joined", "member_left", "member_role_changed",
+    "listing_created", "listing_updated", "listing_published",
+    "project_created", "project_updated",
+    "revenue_split_changed", "settings_updated"
+  ]).notNull(),
+  targetType: varchar("targetType", { length: 64 }),
+  targetId: int("targetId"),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TeamActivity = typeof teamActivity.$inferSelect;
+export type InsertTeamActivity = typeof teamActivity.$inferInsert;
+
+// ============================================
+// APPROVAL WORKFLOWS
+// ============================================
+export const approvalWorkflows = mysqlTable("approvalWorkflows", {
+  id: int("id").autoincrement().primaryKey(),
+  teamId: int("teamId").notNull(),
+  listingId: int("listingId").notNull(),
+  requestedBy: int("requestedBy").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  // Approval chain
+  approvers: json("approvers").$type<{
+    userId: number;
+    status: "pending" | "approved" | "rejected";
+    comment?: string;
+    decidedAt?: string;
+  }[]>(),
+  // Comments
+  comments: json("comments").$type<{
+    userId: number;
+    content: string;
+    createdAt: string;
+  }[]>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ApprovalWorkflow = typeof approvalWorkflows.$inferSelect;
+export type InsertApprovalWorkflow = typeof approvalWorkflows.$inferInsert;
+
+// ============================================
+// REVENUE SPLITTING
+// ============================================
+export const revenueSplitRules = mysqlTable("revenueSplitRules", {
+  id: int("id").autoincrement().primaryKey(),
+  listingId: int("listingId").notNull(),
+  teamId: int("teamId"),
+  // Split configuration
+  splits: json("splits").$type<{
+    userId: number;
+    percentage: number;
+    role: string;
+  }[]>().notNull(),
+  // Revenue source specific rules
+  sourceType: mysqlEnum("sourceType", ["all", "direct_sale", "subscription", "affiliate"]).default("all").notNull(),
+  // Status
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RevenueSplitRule = typeof revenueSplitRules.$inferSelect;
+export type InsertRevenueSplitRule = typeof revenueSplitRules.$inferInsert;
+
+export const payouts = mysqlTable("payouts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  teamId: int("teamId"),
+  // Amount
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  // Stripe
+  stripePayoutId: varchar("stripePayoutId", { length: 128 }),
+  stripeTransferId: varchar("stripeTransferId", { length: 128 }),
+  // Status
+  status: mysqlEnum("status", ["pending", "processing", "completed", "failed"]).default("pending").notNull(),
+  failureReason: text("failureReason"),
+  // Schedule
+  scheduledFor: timestamp("scheduledFor"),
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Payout = typeof payouts.$inferSelect;
+export type InsertPayout = typeof payouts.$inferInsert;
+
+// ============================================
+// VERSION CONTROL
+// ============================================
+export const listingVersions = mysqlTable("listingVersions", {
+  id: int("id").autoincrement().primaryKey(),
+  listingId: int("listingId").notNull(),
+  version: varchar("version", { length: 32 }).notNull(),
+  // Snapshot of listing data
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  fileUrl: text("fileUrl"),
+  fileKey: varchar("fileKey", { length: 512 }),
+  // Change info
+  changeLog: text("changeLog"),
+  changedBy: int("changedBy").notNull(),
+  changeType: mysqlEnum("changeType", ["create", "update", "price_change", "file_update", "publish", "unpublish"]).notNull(),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ListingVersion = typeof listingVersions.$inferSelect;
+export type InsertListingVersion = typeof listingVersions.$inferInsert;
+
+// ============================================
+// DATA MARKETPLACE (Enhanced Datasets)
+// ============================================
+export const datasets = mysqlTable("datasets", {
+  id: int("id").autoincrement().primaryKey(),
+  listingId: int("listingId").notNull(),
+  // Data type
+  dataType: mysqlEnum("dataType", ["images", "audio", "text", "time_series", "tabular"]).notNull(),
+  // Quality metrics (0-100)
+  qualityScore: int("qualityScore").default(0),
+  completenessScore: int("completenessScore").default(0),
+  accuracyScore: int("accuracyScore").default(0),
+  diversityScore: int("diversityScore").default(0),
+  // Dataset info
+  rowCount: int("rowCount").default(0),
+  columnCount: int("columnCount").default(0),
+  fileSize: int("fileSize").default(0), // in bytes
+  fileFormat: varchar("fileFormat", { length: 32 }),
+  // Schema/structure
+  schema: json("schema").$type<{
+    columns?: { name: string; type: string; description?: string }[];
+    labels?: string[];
+    sampleCount?: number;
+  }>(),
+  // Licensing
+  licenseType: mysqlEnum("licenseType", ["commercial", "academic", "personal", "open_source"]).default("personal").notNull(),
+  licenseDetails: text("licenseDetails"),
+  // Preview
+  previewData: json("previewData").$type<{
+    rows?: Record<string, unknown>[];
+    sampleImages?: string[];
+    sampleText?: string[];
+  }>(),
+  // Pre-labeled info
+  isLabeled: boolean("isLabeled").default(false),
+  labelCategories: json("labelCategories").$type<string[]>(),
+  labelCount: int("labelCount").default(0),
+  // Provider info
+  providerId: int("providerId").notNull(),
+  isVerifiedProvider: boolean("isVerifiedProvider").default(false),
+  // Versioning
+  currentVersion: varchar("currentVersion", { length: 32 }).default("1.0.0"),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Dataset = typeof datasets.$inferSelect;
+export type InsertDataset = typeof datasets.$inferInsert;
+
+export const datasetVersions = mysqlTable("datasetVersions", {
+  id: int("id").autoincrement().primaryKey(),
+  datasetId: int("datasetId").notNull(),
+  version: varchar("version", { length: 32 }).notNull(),
+  // Changes
+  changeLog: text("changeLog"),
+  rowCountDelta: int("rowCountDelta").default(0),
+  // Files
+  fileUrl: text("fileUrl"),
+  fileKey: varchar("fileKey", { length: 512 }),
+  fileSize: int("fileSize").default(0),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DatasetVersion = typeof datasetVersions.$inferSelect;
+export type InsertDatasetVersion = typeof datasetVersions.$inferInsert;
+
+// ============================================
+// SUBSCRIPTIONS
+// ============================================
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  // Plan info
+  plan: mysqlEnum("plan", ["free", "pro", "master"]).default("free").notNull(),
+  // Stripe
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
+  stripePriceId: varchar("stripePriceId", { length: 128 }),
+  // Status
+  status: mysqlEnum("status", ["active", "canceled", "past_due", "trialing"]).default("active").notNull(),
+  // Dates
+  currentPeriodStart: timestamp("currentPeriodStart"),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  canceledAt: timestamp("canceledAt"),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+// ============================================
+// AFFILIATES & REFERRALS
+// ============================================
+export const affiliates = mysqlTable("affiliates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  // Referral code
+  referralCode: varchar("referralCode", { length: 32 }).notNull().unique(),
+  // Commission rates
+  commissionRate: decimal("commissionRate", { precision: 5, scale: 2 }).default("10.00").notNull(),
+  // Stats
+  totalReferrals: int("totalReferrals").default(0),
+  totalEarnings: decimal("totalEarnings", { precision: 12, scale: 2 }).default("0.00"),
+  pendingEarnings: decimal("pendingEarnings", { precision: 12, scale: 2 }).default("0.00"),
+  // Status
+  status: mysqlEnum("status", ["active", "suspended", "pending"]).default("pending").notNull(),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Affiliate = typeof affiliates.$inferSelect;
+export type InsertAffiliate = typeof affiliates.$inferInsert;
+
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  affiliateId: int("affiliateId").notNull(),
+  referredUserId: int("referredUserId").notNull(),
+  // Purchase tracking
+  purchaseId: int("purchaseId"),
+  purchaseAmount: decimal("purchaseAmount", { precision: 10, scale: 2 }),
+  commissionAmount: decimal("commissionAmount", { precision: 10, scale: 2 }),
+  // Status
+  status: mysqlEnum("status", ["pending", "qualified", "paid"]).default("pending").notNull(),
+  // Timestamps
+  qualifiedAt: timestamp("qualifiedAt"),
+  paidAt: timestamp("paidAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;
+
+// ============================================
+// CUSTOM PROJECT REQUESTS
+// ============================================
+export const customProjects = mysqlTable("customProjects", {
+  id: int("id").autoincrement().primaryKey(),
+  requesterId: int("requesterId").notNull(),
+  // Project details
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description").notNull(),
+  category: mysqlEnum("category", ["function", "template", "application", "dataset", "ai_model"]).notNull(),
+  requirements: json("requirements").$type<{
+    features?: string[];
+    techStack?: string[];
+    timeline?: string;
+    budget?: { min: number; max: number };
+  }>(),
+  // Budget
+  budgetMin: decimal("budgetMin", { precision: 10, scale: 2 }),
+  budgetMax: decimal("budgetMax", { precision: 10, scale: 2 }),
+  // Status
+  status: mysqlEnum("status", ["open", "in_progress", "completed", "canceled"]).default("open").notNull(),
+  // Assigned developer
+  assignedTo: int("assignedTo"),
+  // Deliverables
+  deliverableListingId: int("deliverableListingId"),
+  // Timestamps
+  deadline: timestamp("deadline"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CustomProject = typeof customProjects.$inferSelect;
+export type InsertCustomProject = typeof customProjects.$inferInsert;
+
+export const customProjectBids = mysqlTable("customProjectBids", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  developerId: int("developerId").notNull(),
+  // Bid details
+  proposedPrice: decimal("proposedPrice", { precision: 10, scale: 2 }).notNull(),
+  proposedTimeline: varchar("proposedTimeline", { length: 128 }),
+  proposal: text("proposal").notNull(),
+  // Status
+  status: mysqlEnum("status", ["pending", "accepted", "rejected", "withdrawn"]).default("pending").notNull(),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CustomProjectBid = typeof customProjectBids.$inferSelect;
+export type InsertCustomProjectBid = typeof customProjectBids.$inferInsert;

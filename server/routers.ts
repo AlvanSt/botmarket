@@ -579,6 +579,450 @@ export const appRouter = router({
   }),
 
   // ============================================
+  // TEAMS ROUTER
+  // ============================================
+  teams: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return db.getTeamsByUser(ctx.user.id);
+    }),
+    
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const team = await db.getTeamById(input.id);
+        if (!team) throw new TRPCError({ code: 'NOT_FOUND' });
+        // Check if user is a member
+        const members = await db.getTeamMembers(input.id);
+        const isMember = members.some(m => m.userId === ctx.user.id);
+        if (!isMember && ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN' });
+        }
+        return { team, members };
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().min(2).max(256),
+        description: z.string().max(1000).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const slug = `${input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${nanoid(6)}`;
+        const teamId = await db.createTeam({
+          ...input,
+          slug,
+          ownerId: ctx.user.id,
+        });
+        
+        // Add creator as owner
+        await db.addTeamMember({
+          teamId,
+          userId: ctx.user.id,
+          role: 'owner',
+          revenueSplit: '100.00',
+        });
+        
+        return { teamId, slug };
+      }),
+    
+    inviteMember: protectedProcedure
+      .input(z.object({
+        teamId: z.number(),
+        userId: z.number(),
+        role: z.enum(['admin', 'editor', 'viewer']),
+        revenueSplit: z.number().min(0).max(100).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const team = await db.getTeamById(input.teamId);
+        if (!team) throw new TRPCError({ code: 'NOT_FOUND' });
+        
+        // Check if user has permission to invite
+        const members = await db.getTeamMembers(input.teamId);
+        const currentMember = members.find(m => m.userId === ctx.user.id);
+        if (!currentMember || !['owner', 'admin'].includes(currentMember.role)) {
+          throw new TRPCError({ code: 'FORBIDDEN' });
+        }
+        
+        await db.addTeamMember({
+          teamId: input.teamId,
+          userId: input.userId,
+          role: input.role,
+          revenueSplit: (input.revenueSplit || 0).toString(),
+          invitedBy: ctx.user.id,
+          status: 'invited',
+        });
+        
+        await db.addTeamActivity({
+          teamId: input.teamId,
+          userId: ctx.user.id,
+          actionType: 'member_joined',
+          targetId: input.userId,
+        });
+        
+        return { success: true };
+      }),
+    
+    updateMemberRole: protectedProcedure
+      .input(z.object({
+        teamId: z.number(),
+        memberId: z.number(),
+        role: z.enum(['admin', 'editor', 'viewer']),
+        revenueSplit: z.number().min(0).max(100).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const team = await db.getTeamById(input.teamId);
+        if (!team) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (team.ownerId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN' });
+        }
+        
+        await db.updateTeamMember(input.memberId, {
+          role: input.role,
+          revenueSplit: input.revenueSplit?.toString(),
+        });
+        
+        await db.addTeamActivity({
+          teamId: input.teamId,
+          userId: ctx.user.id,
+          actionType: 'member_role_changed',
+          targetId: input.memberId,
+        });
+        
+        return { success: true };
+      }),
+    
+    removeMember: protectedProcedure
+      .input(z.object({
+        teamId: z.number(),
+        userId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const team = await db.getTeamById(input.teamId);
+        if (!team) throw new TRPCError({ code: 'NOT_FOUND' });
+        
+        // Only owner can remove members, or member can remove themselves
+        if (team.ownerId !== ctx.user.id && input.userId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN' });
+        }
+        
+        await db.removeTeamMember(input.teamId, input.userId);
+        
+        await db.addTeamActivity({
+          teamId: input.teamId,
+          userId: ctx.user.id,
+          actionType: 'member_left',
+          targetId: input.userId,
+        });
+        
+        return { success: true };
+      }),
+    
+    getActivity: protectedProcedure
+      .input(z.object({ teamId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const members = await db.getTeamMembers(input.teamId);
+        const isMember = members.some(m => m.userId === ctx.user.id);
+        if (!isMember) throw new TRPCError({ code: 'FORBIDDEN' });
+        return db.getTeamActivity(input.teamId);
+      }),
+  }),
+
+  // ============================================
+  // REVENUE SPLITTING ROUTER
+  // ============================================
+  revenue: router({
+    getSplitRules: protectedProcedure
+      .input(z.object({ listingId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const listing = await db.getListingById(input.listingId);
+        if (!listing) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (listing.sellerId !== ctx.user.id && ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'FORBIDDEN' });
+        }
+        return db.getRevenueSplitRules(input.listingId);
+      }),
+    
+    createSplitRule: protectedProcedure
+      .input(z.object({
+        listingId: z.number(),
+        teamId: z.number().optional(),
+        splits: z.array(z.object({
+          userId: z.number(),
+          percentage: z.number().min(0).max(100),
+          role: z.string(),
+        })),
+        sourceType: z.enum(['all', 'direct_sale', 'subscription', 'affiliate']).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const listing = await db.getListingById(input.listingId);
+        if (!listing) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (listing.sellerId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN' });
+        }
+        
+        // Validate total percentage = 100
+        const total = input.splits.reduce((sum, s) => sum + s.percentage, 0);
+        if (total !== 100) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Split percentages must total 100%' });
+        }
+        
+        const ruleId = await db.createRevenueSplitRule({
+          listingId: input.listingId,
+          teamId: input.teamId,
+          splits: input.splits,
+          sourceType: input.sourceType || 'all',
+        });
+        
+        return { ruleId };
+      }),
+    
+    getPayouts: protectedProcedure.query(async ({ ctx }) => {
+      return db.getPayoutsByUser(ctx.user.id);
+    }),
+  }),
+
+  // ============================================
+  // DATA MARKETPLACE ROUTER
+  // ============================================
+  datasets: router({
+    browse: publicProcedure
+      .input(z.object({
+        dataType: z.string().optional(),
+        licenseType: z.string().optional(),
+        minQuality: z.number().optional(),
+        isLabeled: z.boolean().optional(),
+        limit: z.number().min(1).max(50).optional(),
+        offset: z.number().min(0).optional(),
+      }))
+      .query(async ({ input }) => {
+        return db.getDatasets(input);
+      }),
+    
+    getByListingId: publicProcedure
+      .input(z.object({ listingId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getDatasetByListingId(input.listingId);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        listingId: z.number(),
+        dataType: z.enum(['images', 'audio', 'text', 'time_series', 'tabular']),
+        qualityScore: z.number().min(0).max(100).optional(),
+        completenessScore: z.number().min(0).max(100).optional(),
+        accuracyScore: z.number().min(0).max(100).optional(),
+        diversityScore: z.number().min(0).max(100).optional(),
+        rowCount: z.number().optional(),
+        columnCount: z.number().optional(),
+        fileFormat: z.string().optional(),
+        licenseType: z.enum(['commercial', 'academic', 'personal', 'open_source']),
+        licenseDetails: z.string().optional(),
+        isLabeled: z.boolean().optional(),
+        labelCategories: z.array(z.string()).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const listing = await db.getListingById(input.listingId);
+        if (!listing) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (listing.sellerId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN' });
+        }
+        
+        const datasetId = await db.createDataset({
+          ...input,
+          providerId: ctx.user.id,
+        });
+        
+        return { datasetId };
+      }),
+  }),
+
+  // ============================================
+  // CUSTOM PROJECTS ROUTER
+  // ============================================
+  customProjects: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return db.getCustomProjectsByUser(ctx.user.id);
+    }),
+    
+    getOpen: publicProcedure.query(async () => {
+      return db.getOpenCustomProjects();
+    }),
+    
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const project = await db.getCustomProjectById(input.id);
+        if (!project) throw new TRPCError({ code: 'NOT_FOUND' });
+        const bids = await db.getBidsByProject(input.id);
+        return { project, bids };
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        title: z.string().min(5).max(256),
+        description: z.string().min(20),
+        category: z.enum(['function', 'template', 'application', 'dataset', 'ai_model']),
+        requirements: z.object({
+          features: z.array(z.string()).optional(),
+          techStack: z.array(z.string()).optional(),
+          timeline: z.string().optional(),
+        }).optional(),
+        budgetMin: z.number().min(0).optional(),
+        budgetMax: z.number().optional(),
+        deadline: z.date().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Check user's plan for custom project access
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: 'NOT_FOUND' });
+        
+        // Free users cannot create custom projects
+        if (user.subscriptionTier === 'free') {
+          throw new TRPCError({ 
+            code: 'FORBIDDEN', 
+            message: 'Custom projects require Pro or Master plan' 
+          });
+        }
+        
+        // Pro users have minimum budget requirement
+        if (user.subscriptionTier === 'creator' && (input.budgetMin || 0) < 500) {
+          throw new TRPCError({ 
+            code: 'BAD_REQUEST', 
+            message: 'Pro plan requires minimum $500 budget for custom projects' 
+          });
+        }
+        
+        const projectId = await db.createCustomProject({
+          ...input,
+          requesterId: ctx.user.id,
+          budgetMin: input.budgetMin?.toString(),
+          budgetMax: input.budgetMax?.toString(),
+        });
+        
+        return { projectId };
+      }),
+    
+    submitBid: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        proposedPrice: z.number().min(0),
+        proposedTimeline: z.string().optional(),
+        proposal: z.string().min(50),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getCustomProjectById(input.projectId);
+        if (!project) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (project.status !== 'open') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Project is not accepting bids' });
+        }
+        if (project.requesterId === ctx.user.id) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot bid on your own project' });
+        }
+        
+        const bidId = await db.createCustomProjectBid({
+          projectId: input.projectId,
+          developerId: ctx.user.id,
+          proposedPrice: input.proposedPrice.toString(),
+          proposedTimeline: input.proposedTimeline,
+          proposal: input.proposal,
+        });
+        
+        return { bidId };
+      }),
+    
+    acceptBid: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        bidId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getCustomProjectById(input.projectId);
+        if (!project) throw new TRPCError({ code: 'NOT_FOUND' });
+        if (project.requesterId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN' });
+        }
+        
+        // Get the bid to find developer
+        const bids = await db.getBidsByProject(input.projectId);
+        const acceptedBid = bids.find(b => b.id === input.bidId);
+        if (!acceptedBid) throw new TRPCError({ code: 'NOT_FOUND' });
+        
+        // Update bid status
+        await db.updateCustomProjectBid(input.bidId, { status: 'accepted' });
+        
+        // Reject other bids
+        for (const bid of bids) {
+          if (bid.id !== input.bidId) {
+            await db.updateCustomProjectBid(bid.id, { status: 'rejected' });
+          }
+        }
+        
+        // Update project
+        await db.updateCustomProject(input.projectId, {
+          status: 'in_progress',
+          assignedTo: acceptedBid.developerId,
+        });
+        
+        return { success: true };
+      }),
+  }),
+
+  // ============================================
+  // AFFILIATES ROUTER
+  // ============================================
+  affiliates: router({
+    getMyAffiliate: protectedProcedure.query(async ({ ctx }) => {
+      return db.getAffiliateByUserId(ctx.user.id);
+    }),
+    
+    join: protectedProcedure.mutation(async ({ ctx }) => {
+      const existing = await db.getAffiliateByUserId(ctx.user.id);
+      if (existing) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Already an affiliate' });
+      }
+      
+      const referralCode = nanoid(8).toUpperCase();
+      const affiliateId = await db.createAffiliate({
+        userId: ctx.user.id,
+        referralCode,
+        status: 'active',
+      });
+      
+      return { affiliateId, referralCode };
+    }),
+    
+    getReferrals: protectedProcedure.query(async ({ ctx }) => {
+      const affiliate = await db.getAffiliateByUserId(ctx.user.id);
+      if (!affiliate) return [];
+      return db.getReferralsByAffiliate(affiliate.id);
+    }),
+  }),
+
+  // ============================================
+  // SUBSCRIPTIONS ROUTER
+  // ============================================
+  subscriptions: router({
+    getCurrent: protectedProcedure.query(async ({ ctx }) => {
+      return db.getSubscriptionByUserId(ctx.user.id);
+    }),
+    
+    // In production, this would create a Stripe subscription checkout
+    upgrade: protectedProcedure
+      .input(z.object({
+        plan: z.enum(['pro', 'master']),
+        interval: z.enum(['monthly', 'yearly']),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // For MVP, just return a message
+        // In production, create Stripe checkout session
+        return { 
+          message: 'Subscription checkout coming soon',
+          plan: input.plan,
+          interval: input.interval,
+        };
+      }),
+  }),
+
+  // ============================================
   // ADMIN ROUTER
   // ============================================
   admin: router({

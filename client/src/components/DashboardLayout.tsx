@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, Sparkles, ShoppingCart, Brain, Package, CreditCard, Settings, Shield, BarChart3, DollarSign } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Sparkles, ShoppingCart, Brain, Package, CreditCard, Settings, Shield, BarChart3, DollarSign, FolderKanban, Database, UserPlus } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -29,12 +29,16 @@ import { Button } from "./ui/button";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: FolderKanban, label: "Projects", path: "/projects" },
   { icon: ShoppingCart, label: "Marketplace", path: "/marketplace" },
+  { icon: Database, label: "Data Market", path: "/data-marketplace" },
   { icon: Brain, label: "AI Builder", path: "/ai-builder" },
   { icon: Package, label: "My Listings", path: "/my-listings" },
   { icon: CreditCard, label: "Purchases", path: "/my-purchases" },
+  { icon: Users, label: "Teams", path: "/teams" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: DollarSign, label: "Affiliate", path: "/affiliate" },
+  { icon: UserPlus, label: "Custom Project", path: "/custom-project" },
   { icon: Settings, label: "Profile", path: "/profile" },
 ];
 

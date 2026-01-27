@@ -446,3 +446,375 @@ export async function getPlatformStats() {
     platformFees,
   };
 }
+
+
+// ============================================
+// TEAM QUERIES
+// ============================================
+import { 
+  teams, InsertTeam, 
+  teamMembers, InsertTeamMember,
+  teamActivity, InsertTeamActivity,
+  revenueSplitRules, InsertRevenueSplitRule,
+  payouts, InsertPayout,
+  datasets, InsertDataset,
+  subscriptions, InsertSubscription,
+  affiliates, InsertAffiliate,
+  referrals, InsertReferral,
+  customProjects, InsertCustomProject,
+  customProjectBids, InsertCustomProjectBid,
+  listingVersions, InsertListingVersion
+} from "../drizzle/schema";
+
+export async function createTeam(data: InsertTeam) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(teams).values(data);
+  return result[0].insertId;
+}
+
+export async function getTeamById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(teams).where(eq(teams.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getTeamBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(teams).where(eq(teams.slug, slug)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getTeamsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const memberRecords = await db.select().from(teamMembers)
+    .where(and(eq(teamMembers.userId, userId), eq(teamMembers.status, 'active')));
+  
+  if (memberRecords.length === 0) return [];
+  
+  const teamIds = memberRecords.map(m => m.teamId);
+  return db.select().from(teams).where(inArray(teams.id, teamIds));
+}
+
+export async function updateTeam(id: number, data: Partial<InsertTeam>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(teams).set({ ...data, updatedAt: new Date() }).where(eq(teams.id, id));
+}
+
+export async function addTeamMember(data: InsertTeamMember) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(teamMembers).values(data);
+  
+  // Update team member count
+  await db.update(teams).set({ 
+    memberCount: sql`${teams.memberCount} + 1` 
+  }).where(eq(teams.id, data.teamId));
+  
+  return result[0].insertId;
+}
+
+export async function getTeamMembers(teamId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(teamMembers)
+    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.status, 'active')));
+}
+
+export async function updateTeamMember(id: number, data: Partial<InsertTeamMember>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(teamMembers).set(data).where(eq(teamMembers.id, id));
+}
+
+export async function removeTeamMember(teamId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(teamMembers)
+    .set({ status: 'removed' })
+    .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
+  
+  // Update team member count
+  await db.update(teams).set({ 
+    memberCount: sql`${teams.memberCount} - 1` 
+  }).where(eq(teams.id, teamId));
+}
+
+export async function addTeamActivity(data: InsertTeamActivity) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(teamActivity).values(data);
+}
+
+export async function getTeamActivity(teamId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(teamActivity)
+    .where(eq(teamActivity.teamId, teamId))
+    .orderBy(desc(teamActivity.createdAt))
+    .limit(limit);
+}
+
+// ============================================
+// REVENUE SPLITTING QUERIES
+// ============================================
+export async function createRevenueSplitRule(data: InsertRevenueSplitRule) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(revenueSplitRules).values(data);
+  return result[0].insertId;
+}
+
+export async function getRevenueSplitRules(listingId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(revenueSplitRules)
+    .where(and(eq(revenueSplitRules.listingId, listingId), eq(revenueSplitRules.isActive, true)));
+}
+
+export async function updateRevenueSplitRule(id: number, data: Partial<InsertRevenueSplitRule>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(revenueSplitRules).set({ ...data, updatedAt: new Date() }).where(eq(revenueSplitRules.id, id));
+}
+
+export async function createPayout(data: InsertPayout) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(payouts).values(data);
+  return result[0].insertId;
+}
+
+export async function getPayoutsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(payouts)
+    .where(eq(payouts.userId, userId))
+    .orderBy(desc(payouts.createdAt));
+}
+
+export async function getPendingPayouts() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(payouts)
+    .where(eq(payouts.status, 'pending'))
+    .orderBy(asc(payouts.scheduledFor));
+}
+
+export async function updatePayout(id: number, data: Partial<InsertPayout>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(payouts).set(data).where(eq(payouts.id, id));
+}
+
+// ============================================
+// DATASET QUERIES
+// ============================================
+export async function createDataset(data: InsertDataset) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(datasets).values(data);
+  return result[0].insertId;
+}
+
+export async function getDatasetByListingId(listingId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(datasets).where(eq(datasets.listingId, listingId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getDatasets(options: {
+  dataType?: string;
+  licenseType?: string;
+  minQuality?: number;
+  isLabeled?: boolean;
+  limit?: number;
+  offset?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const conditions = [];
+  
+  if (options.dataType) {
+    conditions.push(eq(datasets.dataType, options.dataType as any));
+  }
+  if (options.licenseType) {
+    conditions.push(eq(datasets.licenseType, options.licenseType as any));
+  }
+  if (options.minQuality !== undefined) {
+    conditions.push(gte(datasets.qualityScore, options.minQuality));
+  }
+  if (options.isLabeled !== undefined) {
+    conditions.push(eq(datasets.isLabeled, options.isLabeled));
+  }
+  
+  const query = conditions.length > 0 
+    ? db.select().from(datasets).where(and(...conditions))
+    : db.select().from(datasets);
+    
+  return query
+    .orderBy(desc(datasets.qualityScore))
+    .limit(options.limit || 20)
+    .offset(options.offset || 0);
+}
+
+export async function updateDataset(id: number, data: Partial<InsertDataset>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(datasets).set({ ...data, updatedAt: new Date() }).where(eq(datasets.id, id));
+}
+
+// ============================================
+// SUBSCRIPTION QUERIES
+// ============================================
+export async function createSubscription(data: InsertSubscription) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(subscriptions).values(data);
+  return result[0].insertId;
+}
+
+export async function getSubscriptionByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+    .orderBy(desc(subscriptions.createdAt))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateSubscription(id: number, data: Partial<InsertSubscription>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(subscriptions).set({ ...data, updatedAt: new Date() }).where(eq(subscriptions.id, id));
+}
+
+// ============================================
+// AFFILIATE QUERIES
+// ============================================
+export async function createAffiliate(data: InsertAffiliate) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(affiliates).values(data);
+  return result[0].insertId;
+}
+
+export async function getAffiliateByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(affiliates).where(eq(affiliates.userId, userId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAffiliateByCode(code: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(affiliates).where(eq(affiliates.referralCode, code)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateAffiliate(id: number, data: Partial<InsertAffiliate>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(affiliates).set({ ...data, updatedAt: new Date() }).where(eq(affiliates.id, id));
+}
+
+export async function createReferral(data: InsertReferral) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(referrals).values(data);
+  return result[0].insertId;
+}
+
+export async function getReferralsByAffiliate(affiliateId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(referrals)
+    .where(eq(referrals.affiliateId, affiliateId))
+    .orderBy(desc(referrals.createdAt));
+}
+
+// ============================================
+// CUSTOM PROJECT QUERIES
+// ============================================
+export async function createCustomProject(data: InsertCustomProject) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(customProjects).values(data);
+  return result[0].insertId;
+}
+
+export async function getCustomProjectById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(customProjects).where(eq(customProjects.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getOpenCustomProjects() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(customProjects)
+    .where(eq(customProjects.status, 'open'))
+    .orderBy(desc(customProjects.createdAt));
+}
+
+export async function getCustomProjectsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(customProjects)
+    .where(eq(customProjects.requesterId, userId))
+    .orderBy(desc(customProjects.createdAt));
+}
+
+export async function updateCustomProject(id: number, data: Partial<InsertCustomProject>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(customProjects).set({ ...data, updatedAt: new Date() }).where(eq(customProjects.id, id));
+}
+
+export async function createCustomProjectBid(data: InsertCustomProjectBid) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(customProjectBids).values(data);
+  return result[0].insertId;
+}
+
+export async function getBidsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(customProjectBids)
+    .where(eq(customProjectBids.projectId, projectId))
+    .orderBy(asc(customProjectBids.proposedPrice));
+}
+
+export async function updateCustomProjectBid(id: number, data: Partial<InsertCustomProjectBid>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(customProjectBids).set(data).where(eq(customProjectBids.id, id));
+}
+
+// ============================================
+// VERSION CONTROL QUERIES
+// ============================================
+export async function createListingVersion(data: InsertListingVersion) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(listingVersions).values(data);
+  return result[0].insertId;
+}
+
+export async function getListingVersions(listingId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(listingVersions)
+    .where(eq(listingVersions.listingId, listingId))
+    .orderBy(desc(listingVersions.createdAt));
+}

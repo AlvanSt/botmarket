@@ -76,7 +76,7 @@
 - [x] Smart search with keyword extraction
 - [x] Advanced filtering (price, rating, compatibility)
 - [x] Trending & Popular sections
-- [x] Collections/bundles feature
+- [x] Removed collections feature (per user request)
 - [x] Pricing page with Free/Pro/Master tiers
 - [ ] Subscription checkout integration
 - [x] Enhanced analytics dashboard
@@ -84,8 +84,6 @@
 - [x] Affiliate program with referral tracking
 - [x] Developer profiles with portfolio
 - [x] Custom project request system (Master plan)
-- [ ] Data quality scores for datasets
-- [ ] Licensing options for datasets
 
 ## Community Features
 - [x] Community page
@@ -93,3 +91,66 @@
 - [x] Forums and discussions
 - [x] Challenges and competitions
 - [x] Tutorials and learning resources
+
+
+## Plan Restrictions & UI Cleanup
+- [x] Add plan-based feature restrictions (Free/Pro/Master)
+- [x] Show upgrade prompts for restricted features
+- [x] Implement plan checking in custom projects
+
+## Team & Collaboration Features
+- [x] Role-based permissions (Owner, Admin, Editor, Viewer)
+- [x] Team management page
+- [x] Team creation and member invitation
+- [x] Team activity feed
+- [x] Approval workflows for publishing (schema ready)
+- [ ] Real-time co-working with presence indicators
+
+## Advanced Revenue Features
+- [x] Dynamic split rules for different revenue sources
+- [x] Revenue split configuration per listing
+- [x] Payout tracking system
+- [ ] Automated payout system with Stripe Connect
+- [ ] Revenue forecasting with predictive analytics
+- [ ] Multi-currency support
+
+## Enhanced Project Dashboard
+- [x] Central dashboard with all project types
+- [x] Advanced analytics (sales, earnings, conversions)
+- [x] Smart listing management with bulk operations
+- [x] Version control with change history (schema ready)
+- [x] Team collaboration hub
+
+## Data Marketplace
+- [x] Data marketplace page with filtering
+- [x] Data categories (images, audio, text, time-series, tabular)
+- [x] Data quality scores (completeness, accuracy, diversity)
+- [x] Licensing options (commercial, academic, personal, open_source)
+- [x] Data previews with sample rows
+- [x] Data versioning (schema ready)
+- [x] Verified data providers
+- [ ] Data augmentation packs
+
+## Database Tables Added
+- [x] teams - Team management
+- [x] teamMembers - Team membership with roles
+- [x] teamActivity - Team activity feed
+- [x] approvalWorkflows - Publishing approval chains
+- [x] revenueSplitRules - Revenue splitting configuration
+- [x] payouts - Payout tracking
+- [x] listingVersions - Version control for listings
+- [x] datasets - Data marketplace metadata
+- [x] datasetVersions - Dataset versioning
+- [x] subscriptions - User subscriptions
+- [x] affiliates - Affiliate program
+- [x] referrals - Referral tracking
+- [x] customProjects - Custom project requests
+- [x] customProjectBids - Developer bids on projects
+
+## Tests
+- [x] Auth logout test
+- [x] Stripe webhook tests (3 tests)
+- [x] Teams router tests (3 tests)
+- [x] Affiliates router tests (2 tests)
+- [x] Subscriptions router tests (1 test)
+- [x] Custom projects router tests (3 tests)

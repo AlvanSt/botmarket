@@ -88,33 +88,7 @@ function extractKeywords(query: string): { keywords: string[], suggestions: stri
   };
 }
 
-// Featured collections
-const collections = [
-  {
-    id: "business-starter",
-    name: "Business Intelligence Starter Pack",
-    description: "Everything you need to analyze and visualize business data",
-    items: ["Data Validation Library", "CSV Parser & Exporter", "SaaS Dashboard Starter"],
-    icon: TrendingUp,
-    color: "from-blue-500 to-indigo-600"
-  },
-  {
-    id: "ai-training",
-    name: "AI Training Essentials",
-    description: "High-quality datasets for training your AI models",
-    items: ["Product Images Dataset", "Customer Reviews Dataset", "Sample Audio Dataset"],
-    icon: Zap,
-    color: "from-purple-500 to-pink-600"
-  },
-  {
-    id: "automation",
-    name: "Automation Toolkit",
-    description: "Tools to automate your daily workflows",
-    items: ["Task Manager Bot", "File Organizer Tool", "Invoice Generator Pro"],
-    icon: Shield,
-    color: "from-green-500 to-emerald-600"
-  }
-];
+
 
 function getCategoryIcon(category: string) {
   switch (category) {
@@ -388,15 +362,11 @@ export default function Marketplace() {
 
         {/* Tabs for different views */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="all">All Items</TabsTrigger>
             <TabsTrigger value="trending">
               <Flame className="w-4 h-4 mr-1" />
               Trending
-            </TabsTrigger>
-            <TabsTrigger value="collections">
-              <Package className="w-4 h-4 mr-1" />
-              Collections
             </TabsTrigger>
           </TabsList>
 
@@ -579,37 +549,7 @@ export default function Marketplace() {
             </div>
           </TabsContent>
 
-          {/* Collections Tab */}
-          <TabsContent value="collections" className="mt-6">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {collections.map((collection) => (
-                <Card key={collection.id} className="overflow-hidden card-hover cursor-pointer">
-                  <div className={`h-32 bg-gradient-to-br ${collection.color} flex items-center justify-center`}>
-                    <collection.icon className="w-12 h-12 text-white" />
-                  </div>
-                  <CardHeader>
-                    <CardTitle>{collection.name}</CardTitle>
-                    <CardDescription>{collection.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {collection.items.map((item, i) => (
-                        <div key={i} className="flex items-center gap-2 text-sm">
-                          <Package className="w-4 h-4 text-muted-foreground" />
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700">
-                      View Collection
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
+
         </Tabs>
       </main>
     </div>
