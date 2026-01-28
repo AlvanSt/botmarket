@@ -183,3 +183,14 @@
 - [ ] Add video upload to create/edit listing forms
 - [ ] Display demo videos on listing detail pages
 - [ ] Add video player component
+
+
+## Remove Manus Dependencies (CRITICAL)
+- [ ] Remove Manus OAuth and implement local JWT auth
+- [ ] Remove Manus storage and implement local file system
+- [ ] Remove Manus API calls and environment variables
+- [ ] Update database to local MySQL configuration
+- [ ] Remove Manus-specific code from server
+- [ ] Update frontend to use local auth
+- [ ] Create local auth pages (login, register, logout)
+- [ ] Test all features work without Manus

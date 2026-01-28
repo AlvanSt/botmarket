@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, like, or, sql, gte, lte, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
-  InsertUser, users, 
+  InsertUser, users, User,
   listings, InsertListing, Listing,
   purchases, InsertPurchase,
   reviews, InsertReview,
@@ -843,4 +843,53 @@ export async function getUserByStripeCustomerId(customerId: string) {
     .where(eq(users.stripeCustomerId, customerId))
     .limit(1);
   return result[0] || null;
+}
+
+
+// ============================================
+// LOCAL AUTH QUERIES (replacing Manus OAuth)
+// ============================================
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createUser(data: {
+  email: string;
+  name: string;
+  passwordHash: string;
+  role?: "user" | "admin";
+}): Promise<User> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const result = await db.insert(users).values({
+    email: data.email,
+    name: data.name,
+    passwordHash: data.passwordHash,
+    role: data.role || "user",
+    loginMethod: "local",
+    lastSignedIn: new Date(),
+  });
+
+  const userId = result[0].insertId;
+  const user = await getUserById(userId);
+  if (!user) {
+    throw new Error("Failed to create user");
+  }
+
+  return user;
+}
+
+export async function updateUserLastSignedIn(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.update(users)
+    .set({ lastSignedIn: new Date() })
+    .where(eq(users.id, userId));
 }
