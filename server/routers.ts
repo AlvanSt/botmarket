@@ -10,6 +10,7 @@ import { nanoid } from "nanoid";
 import { createCheckoutSession, getCheckoutSession } from "./stripe/checkout";
 import { calculateSellerEarnings } from "./stripe/products";
 import { createSubscriptionCheckout, cancelSubscription, createBillingPortalSession } from "./stripe/subscription";
+import { authRouter } from "./routers/auth";
 
 // Admin procedure - requires admin role
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -25,14 +26,7 @@ export const appRouter = router({
   // ============================================
   // AUTH ROUTER
   // ============================================
-  auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
-  }),
+  auth: authRouter,
 
   // ============================================
   // USER ROUTER

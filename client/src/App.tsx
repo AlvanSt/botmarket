@@ -24,12 +24,16 @@ import Teams from "./pages/Teams";
 import DataMarketplace from "./pages/DataMarketplace";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 function Router() {
   return (
     <Switch>
       {/* Public Routes */}
       <Route path="/" component={Home} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
       <Route path="/marketplace" component={Marketplace} />
       <Route path="/data-marketplace" component={DataMarketplace} />
       <Route path="/listing/:slug" component={ListingDetail} />
