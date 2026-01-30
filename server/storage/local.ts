@@ -1,6 +1,3 @@
-// Local file storage implementation
-// Replaces Manus S3 storage with local file system
-
 import * as fs from "fs";
 import * as path from "path";
 import { nanoid } from "nanoid";
@@ -21,21 +18,27 @@ function ensureDirectories() {
 
 ensureDirectories();
 
+export interface StorageResult {
+  key: string;
+  url: string;
+  path: string;
+}
+
 /**
  * Upload a file to local storage
  * @param relKey - Relative key for the file (e.g., "listings/123/image.jpg")
  * @param data - File content as Buffer, Uint8Array, or string
- * @param contentType - MIME type of the file (optional)
- * @returns Object with key and url
+ * @param contentType - MIME type of the file
+ * @returns Object with key, url, and path
  */
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
   contentType?: string
-): Promise<{ key: string; url: string }> {
+): Promise<StorageResult> {
   ensureDirectories();
 
-  // Generate unique filename to avoid collisions
+  // Generate unique filename
   const fileName = `${nanoid()}-${path.basename(relKey)}`;
   const filePath = path.join(STORAGE_DIR, fileName);
   const publicPath = path.join(PUBLIC_DIR, fileName);
@@ -50,28 +53,29 @@ export async function storagePut(
     buffer = data;
   }
 
-  // Write to storage directory
+  // Write to storage
   fs.writeFileSync(filePath, buffer);
 
-  // Also write to public directory for direct HTTP access
+  // Also write to public directory for direct access
   fs.writeFileSync(publicPath, buffer);
 
   return {
     key: fileName,
     url: `/uploads/${fileName}`,
+    path: filePath,
   };
 }
 
 /**
  * Get a file from local storage
  * @param relKey - File key (filename)
- * @param expiresIn - Expiration time in seconds (ignored for local storage, kept for API compatibility)
+ * @param expiresIn - Expiration time (ignored for local storage, kept for API compatibility)
  * @returns Object with key and url
  */
 export async function storageGet(
   relKey: string,
   expiresIn?: number
-): Promise<{ key: string; url: string }> {
+): Promise<StorageResult> {
   ensureDirectories();
 
   const filePath = path.join(STORAGE_DIR, relKey);
@@ -84,6 +88,7 @@ export async function storageGet(
   return {
     key: relKey,
     url: `/uploads/${relKey}`,
+    path: filePath,
   };
 }
 
@@ -92,6 +97,8 @@ export async function storageGet(
  * @param relKey - File key (filename)
  */
 export async function storageDelete(relKey: string): Promise<void> {
+  ensureDirectories();
+
   const filePath = path.join(STORAGE_DIR, relKey);
   const publicPath = path.join(PUBLIC_DIR, relKey);
 

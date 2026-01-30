@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
 
 export const systemRouter = router({
@@ -21,9 +20,11 @@ export const systemRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const delivered = await notifyOwner(input);
+      // Notifications disabled in local version
+      // To enable, integrate with email service (SendGrid, Mailgun, etc.)
+      console.log("[Notification] Admin notification:", input.title, input.content);
       return {
-        success: delivered,
+        success: false, // Notifications not available locally
       } as const;
     }),
 });

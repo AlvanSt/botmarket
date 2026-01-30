@@ -499,6 +499,173 @@ All dependencies are listed in `package.json`.
 
 ### 7.2 Add Environment Variables
 
+Copy and paste this into your `.env.local` file:
+
+```env
+# Database (REQUIRED)
+# Replace with your MySQL connection string
+DATABASE_URL=mysql://username:password@localhost:3306/swarm
+
+# Authentication (REQUIRED)
+# Generate a secure secret: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+JWT_SECRET=your-super-secret-key-change-this-in-production
+
+# Stripe (OPTIONAL - for payments)
+# Get from https://dashboard.stripe.com/apikeys
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+
+# Server
+NODE_ENV=development
+PORT=3000
+```
+
+**Important Notes:**
+- This is a LOCAL-ONLY version - no Manus services required
+- You must provide your own MySQL database
+- Stripe is optional but needed for payments
+- Generate a secure JWT_SECRET for production
+
+---
+
+## Step 8: Set Up Database
+
+### 8.1 Install MySQL
+
+You need a MySQL database. Choose one option:
+
+#### Option A: Local MySQL Server
+
+1. **Download MySQL**
+   - Go to https://dev.mysql.com/downloads/mysql/
+   - Download MySQL Community Server
+   - Install with default settings
+
+2. **Create database**
+   ```sql
+   CREATE DATABASE swarm;
+   CREATE USER 'swarm'@'localhost' IDENTIFIED BY 'your_password';
+   GRANT ALL PRIVILEGES ON swarm.* TO 'swarm'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+
+3. **Update DATABASE_URL**
+   ```
+   DATABASE_URL=mysql://swarm:your_password@localhost:3306/swarm
+   ```
+
+#### Option B: Cloud MySQL (PlanetScale, Railway, etc.)
+
+1. **Create account** at PlanetScale, Railway, or similar
+2. **Create a MySQL database**
+3. **Copy connection string** to DATABASE_URL
+
+### 8.2 Push Database Schema
+
+Run this command to create all tables:
+
+```bash
+pnpm db:push
+```
+
+You should see:
+```
+Pushing schema changes...
+Changes applied successfully!
+```
+
+---
+
+## Step 9: Start Development Server
+
+### 9.1 Start the Server
+
+```bash
+pnpm dev
+```
+
+You should see:
+```
+Server running on http://localhost:3000/
+```
+
+### 9.2 Open in Browser
+
+1. Open your web browser
+2. Go to http://localhost:3000
+3. You should see the Swarm landing page!
+
+---
+
+## Step 10: Verify Installation
+
+### 10.1 Test Registration
+
+1. Click **"Sign In"** in the top right
+2. Click **"Create an account"**
+3. Enter email, name, password
+4. Click **"Register"**
+5. You should be logged in!
+
+### 10.2 Make Yourself Admin
+
+Run this SQL query:
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'your@email.com';
+```
+
+### 10.3 Run Tests
+
+```bash
+pnpm test
+```
+
+All 19 tests should pass.
+
+---
+
+## Troubleshooting
+
+### "Cannot connect to database"
+- Check DATABASE_URL is correct
+- Ensure MySQL is running
+- Check firewall allows port 3306
+
+### "Module not found"
+- Run `pnpm install` again
+- Delete `node_modules` and reinstall
+
+### "Port 3000 already in use"
+- Kill the process: `npx kill-port 3000`
+- Or change PORT in `.env.local`
+
+### "JWT_SECRET is required"
+- Make sure `.env.local` file exists with JWT_SECRET set
+
+---
+
+## What's Disabled (No Manus)
+
+These features are disabled in the local version:
+
+- LLM/AI chat
+- Image generation
+- Voice transcription
+- Push notifications
+- Maps integration
+
+To re-enable, integrate with external APIs (OpenAI, Google Maps, etc.)
+
+---
+
+## Next Steps
+
+1. **Explore the codebase** - Read DETAILED_GUIDE.md
+2. **Customize the UI** - Edit files in `client/src/pages/`
+3. **Add features** - Modify `server/routers.ts`
+4. **Deploy** - Use Docker, Railway, or VPS
+
 1. **Copy this template into `.env.local`:**
 
 ```env

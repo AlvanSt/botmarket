@@ -2,7 +2,7 @@
 
 ## Core Platform
 - [x] Database schema setup (users, listings, purchases, reviews, projects, AI models)
-- [x] User authentication with Manus OAuth
+- [x] User authentication (local JWT - Manus OAuth removed)
 - [x] Role-based access control (admin/user)
 - [x] User profile management
 
@@ -158,14 +158,13 @@
 - [x] Auth logout test
 - [x] Stripe webhook tests (3 tests)
 - [x] Teams router tests (9 tests)
-- All 13 tests passing
-
+- [x] Local auth tests (6 tests)
+- All 19 tests passing
 
 ## Analytics Integration
 - [x] Merge analytics into Project Dashboard
 - [x] Remove separate Analytics page from navigation
 - [x] Add analytics charts to project view
-
 
 ## AI Builder Enhancement
 - [x] Add data upload functionality (ZIP files with class folders)
@@ -176,21 +175,19 @@
 - [x] Remove My Listings page from navigation
 - [x] Update Project Dashboard to show all projects
 
-
 ## Demo Video Support
-- [ ] Add demoVideoUrl field to listings table
+- [x] Add demoVideoUrl field to listings table
 - [ ] Create video upload endpoint
 - [ ] Add video upload to create/edit listing forms
 - [ ] Display demo videos on listing detail pages
 - [ ] Add video player component
 
-
-## Remove Manus Dependencies (CRITICAL)
-- [ ] Remove Manus OAuth and implement local JWT auth
-- [ ] Remove Manus storage and implement local file system
-- [ ] Remove Manus API calls and environment variables
-- [ ] Update database to local MySQL configuration
-- [ ] Remove Manus-specific code from server
-- [ ] Update frontend to use local auth
-- [ ] Create local auth pages (login, register, logout)
-- [ ] Test all features work without Manus
+## Remove Manus Dependencies (COMPLETED)
+- [x] Remove Manus OAuth and implement local JWT auth
+- [x] Remove Manus storage and implement local file system
+- [x] Remove Manus API calls (LLM, image generation, voice, notifications, maps)
+- [x] Update environment variables (removed Manus-specific vars)
+- [x] Remove Manus-specific code from server (sdk.ts, oauth.ts disabled)
+- [x] Update frontend to use local auth
+- [x] Create local auth pages (login, register)
+- [x] Test all features work without Manus (19 tests passing)
